@@ -1,20 +1,20 @@
 {
-  "version": "2026-07-28.1",
+  "version": "2026-07-28.2",
   "position": {
     "right": 14,
     "bottom": 94
   },
   "theme": {
     "enabled": true,
-    "pageBackground": "#100d16",
-    "surfaceBackground": "#17121f",
-    "surfaceAltBackground": "#20192b",
-    "sidebarBackground": "#0c0a11",
-    "composerBackground": "#1c1626",
-    "textColor": "#f5f1fa",
-    "mutedTextColor": "#bdb5ca",
-    "borderColor": "rgba(168, 139, 250, 0.18)",
-    "accentColor": "#9f82ff"
+    "pageBackground": "#120a18",
+    "surfaceBackground": "#1a1023",
+    "surfaceAltBackground": "#281833",
+    "sidebarBackground": "#09070e",
+    "composerBackground": "#24152f",
+    "textColor": "#f7f2fb",
+    "mutedTextColor": "#c9bed4",
+    "borderColor": "rgba(190, 150, 255, 0.26)",
+    "accentColor": "#b996ff"
   },
   "actions": [
     {
@@ -25,10 +25,10 @@
       "text": "しおり",
       "autoSend": true,
       "style": {
-        "border": "1px solid rgba(224, 216, 255, 0.72)",
-        "background": "linear-gradient(135deg, rgba(139, 110, 255, 0.96), rgba(101, 76, 214, 0.96))",
+        "border": "1px solid rgba(235, 225, 255, 0.82)",
+        "background": "linear-gradient(135deg, rgba(174, 140, 255, 0.98), rgba(112, 78, 215, 0.98))",
         "color": "#ffffff",
-        "boxShadow": "0 5px 18px rgba(92, 63, 196, 0.38)"
+        "boxShadow": "0 6px 22px rgba(126, 83, 220, 0.45)"
       }
     }
   ]
