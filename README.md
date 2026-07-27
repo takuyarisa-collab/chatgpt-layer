@@ -14,39 +14,59 @@ ChatGPT Webをそのまま使いながら、個人用のボタンや入力補助
 - 入力途中の文章がある場合は上書き確認
 - ChatGPTの画面遷移でボタンが消えても自動で再追加
 
-## Files
+## Architecture
 
-- `chatgpt-layer.user.js`：実行コード本体
-- `chatgpt-layer.meta.js`：更新確認用メタデータ
+`0.2.0` から、ローカルへ入れるUserscriptは小さなローダーになりました。
 
-## Install on iPhone
+- `chatgpt-layer.user.js`：iPhoneへ一度入れる固定ローダー
+- `chatgpt-layer.remote.js`：GitHubからページ読み込み時に取得する機能本体
+- `chatgpt-layer.meta.js`：ローダー更新確認用メタデータ
 
-前提として、iPhoneにUserscriptsを入れ、Safari拡張を有効にします。
+普段の機能追加や見た目の変更は `chatgpt-layer.remote.js` だけを修正します。
+そのため、通常はChatGPTを再読み込みするだけで最新版が反映されます。
 
-1. Safariで次のURLを開く
+GitHubへ接続できない場合は、最後に正常取得できた本体を端末内キャッシュから実行します。
+
+## Install on iPhone / Gear Browser
+
+1. 次のURLを開く
 
    `https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.user.js`
 
-2. Userscriptsからインストール、または既存スクリプトを置き換える
-3. Userscriptsのサイト権限を `chatgpt.com` に許可する
-4. ChatGPTを再読み込みする
-5. 既存のローカル版「しおり」スクリプトは、二重表示を避けるため無効化または削除する
+2. Gear BrowserのUserScriptとしてインストール、または既存版を `0.2.0` へ更新する
+3. ChatGPTを再読み込みする
+4. 紫の「しおり」ボタンが表示され、送信まで動くことを確認する
+
+Safari + Userscriptsでも同じローダーを利用できます。
+既存の旧版や重複するスクリプトは、ボタンの二重表示を避けるため無効化または削除してください。
 
 ## Update flow
 
-1. TaCが追加・修正内容をShionへ伝える
-2. Shionがこのリポジトリのコードを修正する
-3. `chatgpt-layer.user.js` と `chatgpt-layer.meta.js` の `@version` を同じ値へ上げる
-4. TaCがiPhoneのUserscriptsで更新を確認する
-5. ChatGPTを再読み込みして反映を確認する
+### 普段の更新
 
-更新機能が反応しない場合は、上記のRaw URLをSafariで開き、最新版を上書きインストールします。
+1. TaCが追加・修正内容をShionへ伝える
+2. Shionが `chatgpt-layer.remote.js` を修正する
+3. TaCがGear BrowserのChatGPTを再読み込みする
+
+### ローダー自体を変更する場合のみ
+
+1. `chatgpt-layer.user.js` と `chatgpt-layer.meta.js` の `@version` を同じ値へ上げる
+2. Gear BrowserまたはUserscripts側で手動更新する
+3. ChatGPTを再読み込みする
+
+ローダー更新は、通信方式やキャッシュ処理など土台を変える場合にだけ行います。
+
+## Security
+
+- 実行本体は、この公開リポジトリの固定URLからのみ取得する
+- 個人情報、アクセストークン、認証情報をリポジトリへ置かない
+- GitHubアカウントとリポジトリへの書き込み権限を保護する
+- 外部の未知のスクリプトを追加で読み込まない
 
 ## Design principles
 
 - OpenAI APIを使わない
 - ChatGPTの会話履歴と既存ツールをそのまま利用する
-- 個人情報、アクセストークン、認証情報をリポジトリへ置かない
 - 一度に機能を増やしすぎず、実際に使うものを一つずつ追加する
 - ChatGPT側の画面構造変更で壊れる可能性を前提に、小さく修正しやすく保つ
 
