@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.2.1
-// @description  Load ChatGPT Layer settings from GitHub without executing remote code.
+// @version      0.3.0
+// @description  Load ChatGPT Layer settings and theme from GitHub without executing remote code.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -23,15 +23,30 @@
   const BAR_ID = `${LAYER_ID}-actions`;
   const STATUS_ID = `${LAYER_ID}-status`;
   const CACHE_KEY = `${LAYER_ID}:last-good-config`;
+  const THEME_ATTRIBUTE = "data-chatgpt-layer-theme";
 
   const CONFIG_URLS = [
     "https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.config.json",
     "https://cdn.jsdelivr.net/gh/takuyarisa-collab/chatgpt-layer@main/chatgpt-layer.config.json",
   ];
 
+  const DEFAULT_THEME = {
+    enabled: true,
+    pageBackground: "#100d16",
+    surfaceBackground: "#17121f",
+    surfaceAltBackground: "#20192b",
+    sidebarBackground: "#0c0a11",
+    composerBackground: "#1c1626",
+    textColor: "#f5f1fa",
+    mutedTextColor: "#bdb5ca",
+    borderColor: "rgba(168, 139, 250, 0.18)",
+    accentColor: "#9f82ff",
+  };
+
   const DEFAULT_CONFIG = {
-    version: "builtin-0.2.1",
+    version: "builtin-0.3.0",
     position: { right: 14, bottom: 94 },
+    theme: DEFAULT_THEME,
     actions: [
       {
         id: "shiori",
@@ -70,6 +85,33 @@
       'button[aria-label="生成を停止する"]',
     ],
   };
+
+  const OWN_THEME_PROPERTIES = [
+    "--cgl-page-bg",
+    "--cgl-surface-bg",
+    "--cgl-surface-alt-bg",
+    "--cgl-sidebar-bg",
+    "--cgl-composer-bg",
+    "--cgl-text",
+    "--cgl-muted-text",
+    "--cgl-border",
+    "--cgl-accent",
+  ];
+
+  const CHATGPT_THEME_PROPERTIES = [
+    "--main-surface-primary",
+    "--main-surface-secondary",
+    "--main-surface-tertiary",
+    "--sidebar-surface-primary",
+    "--sidebar-surface-secondary",
+    "--composer-surface-primary",
+    "--composer-surface-secondary",
+    "--text-primary",
+    "--text-secondary",
+    "--text-tertiary",
+    "--border-light",
+    "--border-medium",
+  ];
 
   let activeConfig = DEFAULT_CONFIG;
   let scheduled = false;
@@ -280,6 +322,59 @@
     throw new Error("利用できる通信手段がありません。");
   }
 
+  function normalizeNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, number) : fallback;
+  }
+
+  function normalizeColor(value, fallback) {
+    if (typeof value !== "string") return fallback;
+    const candidate = value.trim();
+    if (!candidate) return fallback;
+    if (!globalThis.CSS?.supports?.("color", candidate)) return fallback;
+    return candidate;
+  }
+
+  function normalizeTheme(value) {
+    const theme = value && typeof value === "object" ? value : {};
+    return {
+      enabled: theme.enabled !== false,
+      pageBackground: normalizeColor(
+        theme.pageBackground,
+        DEFAULT_THEME.pageBackground,
+      ),
+      surfaceBackground: normalizeColor(
+        theme.surfaceBackground,
+        DEFAULT_THEME.surfaceBackground,
+      ),
+      surfaceAltBackground: normalizeColor(
+        theme.surfaceAltBackground,
+        DEFAULT_THEME.surfaceAltBackground,
+      ),
+      sidebarBackground: normalizeColor(
+        theme.sidebarBackground,
+        DEFAULT_THEME.sidebarBackground,
+      ),
+      composerBackground: normalizeColor(
+        theme.composerBackground,
+        DEFAULT_THEME.composerBackground,
+      ),
+      textColor: normalizeColor(theme.textColor, DEFAULT_THEME.textColor),
+      mutedTextColor: normalizeColor(
+        theme.mutedTextColor,
+        DEFAULT_THEME.mutedTextColor,
+      ),
+      borderColor: normalizeColor(
+        theme.borderColor,
+        DEFAULT_THEME.borderColor,
+      ),
+      accentColor: normalizeColor(
+        theme.accentColor,
+        DEFAULT_THEME.accentColor,
+      ),
+    };
+  }
+
   function validateConfig(value) {
     if (!value || typeof value !== "object" || !Array.isArray(value.actions)) {
       throw new Error("設定ファイルの形式が不正です。");
@@ -299,9 +394,10 @@
     return {
       version: String(value.version ?? "unknown"),
       position: {
-        right: Number(value.position?.right ?? 14),
-        bottom: Number(value.position?.bottom ?? 94),
+        right: normalizeNumber(value.position?.right, 14),
+        bottom: normalizeNumber(value.position?.bottom, 94),
       },
+      theme: normalizeTheme(value.theme),
       actions,
     };
   }
@@ -340,6 +436,59 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
+      html[${THEME_ATTRIBUTE}="on"],
+      html[${THEME_ATTRIBUTE}="on"] body,
+      html[${THEME_ATTRIBUTE}="on"] #__next {
+        background-color: var(--cgl-page-bg) !important;
+        color: var(--cgl-text) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] main,
+      html[${THEME_ATTRIBUTE}="on"] [role="main"],
+      html[${THEME_ATTRIBUTE}="on"] [class*="bg-token-main-surface-primary"] {
+        background-color: var(--cgl-page-bg) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] [class*="bg-token-main-surface-secondary"] {
+        background-color: var(--cgl-surface-bg) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] [class*="bg-token-main-surface-tertiary"] {
+        background-color: var(--cgl-surface-alt-bg) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] nav,
+      html[${THEME_ATTRIBUTE}="on"] aside,
+      html[${THEME_ATTRIBUTE}="on"] [class*="bg-token-sidebar-surface-primary"] {
+        background-color: var(--cgl-sidebar-bg) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] [class*="bg-token-sidebar-surface-secondary"] {
+        background-color: var(--cgl-surface-bg) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] [class*="bg-token-composer-surface-primary"],
+      html[${THEME_ATTRIBUTE}="on"] form:has(#prompt-textarea),
+      html[${THEME_ATTRIBUTE}="on"] div:has(> #prompt-textarea),
+      html[${THEME_ATTRIBUTE}="on"] div:has(> div > #prompt-textarea) {
+        background-color: var(--cgl-composer-bg) !important;
+        border-color: var(--cgl-border) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] #prompt-textarea {
+        color: var(--cgl-text) !important;
+        caret-color: var(--cgl-accent) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] #prompt-textarea::placeholder {
+        color: var(--cgl-muted-text) !important;
+      }
+
+      html[${THEME_ATTRIBUTE}="on"] pre,
+      html[${THEME_ATTRIBUTE}="on"] code {
+        border-color: var(--cgl-border) !important;
+      }
+
       #${BAR_ID} {
         position: fixed;
         z-index: 2147483647;
@@ -347,6 +496,7 @@
         gap: 8px;
         align-items: center;
       }
+
       #${BAR_ID} button {
         appearance: none;
         border-radius: 999px;
@@ -358,11 +508,14 @@
         user-select: none;
         -webkit-user-select: none;
       }
+
       #${BAR_ID} button:active { transform: scale(0.96); }
+
       #${BAR_ID} button[disabled] {
         opacity: 0.45;
         pointer-events: none;
       }
+
       #${STATUS_ID} {
         position: fixed;
         right: 14px;
@@ -379,6 +532,73 @@
     document.head.appendChild(style);
   }
 
+  function clearTheme(root) {
+    root.removeAttribute(THEME_ATTRIBUTE);
+    for (const property of [...OWN_THEME_PROPERTIES, ...CHATGPT_THEME_PROPERTIES]) {
+      root.style.removeProperty(property);
+    }
+  }
+
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (!root) return;
+
+    if (!theme?.enabled) {
+      clearTheme(root);
+      return;
+    }
+
+    root.setAttribute(THEME_ATTRIBUTE, "on");
+    root.style.setProperty("--cgl-page-bg", theme.pageBackground, "important");
+    root.style.setProperty(
+      "--cgl-surface-bg",
+      theme.surfaceBackground,
+      "important",
+    );
+    root.style.setProperty(
+      "--cgl-surface-alt-bg",
+      theme.surfaceAltBackground,
+      "important",
+    );
+    root.style.setProperty(
+      "--cgl-sidebar-bg",
+      theme.sidebarBackground,
+      "important",
+    );
+    root.style.setProperty(
+      "--cgl-composer-bg",
+      theme.composerBackground,
+      "important",
+    );
+    root.style.setProperty("--cgl-text", theme.textColor, "important");
+    root.style.setProperty(
+      "--cgl-muted-text",
+      theme.mutedTextColor,
+      "important",
+    );
+    root.style.setProperty("--cgl-border", theme.borderColor, "important");
+    root.style.setProperty("--cgl-accent", theme.accentColor, "important");
+
+    const tokenValues = {
+      "--main-surface-primary": theme.pageBackground,
+      "--main-surface-secondary": theme.surfaceBackground,
+      "--main-surface-tertiary": theme.surfaceAltBackground,
+      "--sidebar-surface-primary": theme.sidebarBackground,
+      "--sidebar-surface-secondary": theme.surfaceBackground,
+      "--composer-surface-primary": theme.composerBackground,
+      "--composer-surface-secondary": theme.surfaceAltBackground,
+      "--text-primary": theme.textColor,
+      "--text-secondary": theme.mutedTextColor,
+      "--text-tertiary": theme.mutedTextColor,
+      "--border-light": theme.borderColor,
+      "--border-medium": theme.borderColor,
+    };
+
+    for (const [property, value] of Object.entries(tokenValues)) {
+      root.style.setProperty(property, value, "important");
+    }
+  }
+
   function applyActionStyle(button, action) {
     const style = action.style ?? {};
     button.style.border =
@@ -392,6 +612,7 @@
   function render(config = activeConfig) {
     if (!document.body) return;
     installStyle();
+    applyTheme(config.theme);
 
     let bar = document.getElementById(BAR_ID);
     if (!bar) {
