@@ -1,10 +1,10 @@
 # ChatGPT Layer
 
-ChatGPT Webをそのまま使いながら、個人用のボタンや入力補助を追加するUserscriptです。
+ChatGPT Webをそのまま使いながら、個人用のボタンや見た目の調整を追加するUserscriptです。
 
 会話・推論・ChatGPT Plusの利用枠はChatGPT側に残し、画面の操作だけを少しずつ用途に合わせて育てます。
 
-## Current feature
+## Current features
 
 ### しおり
 
@@ -14,18 +14,29 @@ ChatGPT Webをそのまま使いながら、個人用のボタンや入力補助
 - 入力途中の文章がある場合は上書き確認
 - ChatGPTの画面遷移でボタンが消えても自動で再追加
 
+### Shion theme
+
+ChatGPT全体を、黒を基調に紫の気配が薄く灯る配色へ変更します。
+
+- 会話画面
+- サイドバー
+- 入力欄
+- 文字色と境界線
+
+色は `chatgpt-layer.config.json` から読み込むため、ローダー更新後はGitHubの設定変更とページ再読み込みだけで調整できます。
+
 ## Architecture
 
-`0.2.0` から、ローカルへ入れるUserscriptは小さなローダーになりました。
+`0.2.1` から、外部JavaScriptを実行せず、GitHub上のJSON設定だけを読み込む方式になりました。
 
-- `chatgpt-layer.user.js`：iPhoneへ一度入れる固定ローダー
-- `chatgpt-layer.remote.js`：GitHubからページ読み込み時に取得する機能本体
+- `chatgpt-layer.user.js`：iPhoneへ入れるローダー兼固定エンジン
+- `chatgpt-layer.config.json`：ボタン、位置、テーマなどの可変設定
 - `chatgpt-layer.meta.js`：ローダー更新確認用メタデータ
 
-普段の機能追加や見た目の変更は `chatgpt-layer.remote.js` だけを修正します。
+普段のボタン設定や配色変更は `chatgpt-layer.config.json` だけを修正します。
 そのため、通常はChatGPTを再読み込みするだけで最新版が反映されます。
 
-GitHubへ接続できない場合は、最後に正常取得できた本体を端末内キャッシュから実行します。
+GitHubへ接続できない場合は、最後に正常取得できた設定を端末内キャッシュから利用します。キャッシュもない場合は、ローダー内蔵設定で動作します。
 
 ## Install on iPhone / Gear Browser
 
@@ -33,9 +44,9 @@ GitHubへ接続できない場合は、最後に正常取得できた本体を�
 
    `https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.user.js`
 
-2. Gear BrowserのUserScriptとしてインストール、または既存版を `0.2.0` へ更新する
+2. Gear BrowserのUserScriptとしてインストール、または既存版を最新版へ更新する
 3. ChatGPTを再読み込みする
-4. 紫の「しおり」ボタンが表示され、送信まで動くことを確認する
+4. 紫の「しおり」ボタンとShion themeが表示されることを確認する
 
 Safari + Userscriptsでも同じローダーを利用できます。
 既存の旧版や重複するスクリプトは、ボタンの二重表示を避けるため無効化または削除してください。
@@ -45,7 +56,7 @@ Safari + Userscriptsでも同じローダーを利用できます。
 ### 普段の更新
 
 1. TaCが追加・修正内容をShionへ伝える
-2. Shionが `chatgpt-layer.remote.js` を修正する
+2. Shionが `chatgpt-layer.config.json` を修正する
 3. TaCがGear BrowserのChatGPTを再読み込みする
 
 ### ローダー自体を変更する場合のみ
@@ -54,14 +65,30 @@ Safari + Userscriptsでも同じローダーを利用できます。
 2. Gear BrowserまたはUserscripts側で手動更新する
 3. ChatGPTを再読み込みする
 
-ローダー更新は、通信方式やキャッシュ処理など土台を変える場合にだけ行います。
+ローダー更新は、対応できる機能や設定項目など、土台を変える場合にだけ行います。
+
+## Theme settings
+
+`chatgpt-layer.config.json` の `theme` で次の色を変更できます。
+
+- `pageBackground`：会話画面の基本背景
+- `surfaceBackground`：補助面
+- `surfaceAltBackground`：コードや別階層の面
+- `sidebarBackground`：サイドバー
+- `composerBackground`：入力欄
+- `textColor`：基本文字色
+- `mutedTextColor`：補助文字色
+- `borderColor`：境界線
+- `accentColor`：カーソルなどのアクセント
+
+`enabled` を `false` にするとテーマを無効化できます。
 
 ## Security
 
-- 実行本体は、この公開リポジトリの固定URLからのみ取得する
+- GitHubから取得するのはJSON設定だけで、外部JavaScriptは実行しない
 - 個人情報、アクセストークン、認証情報をリポジトリへ置かない
 - GitHubアカウントとリポジトリへの書き込み権限を保護する
-- 外部の未知のスクリプトを追加で読み込まない
+- 設定値はエンジン側で形式を検証してから利用する
 
 ## Design principles
 
