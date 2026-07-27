@@ -1,0 +1,23 @@
+{
+  "version": "2026-07-27.1",
+  "position": {
+    "right": 14,
+    "bottom": 94
+  },
+  "actions": [
+    {
+      "id": "shiori",
+      "type": "prompt",
+      "label": "しおり",
+      "ariaLabel": "しおりを送信",
+      "text": "しおり",
+      "autoSend": true,
+      "style": {
+        "border": "1px solid rgba(224, 216, 255, 0.72)",
+        "background": "linear-gradient(135deg, rgba(139, 110, 255, 0.96), rgba(101, 76, 214, 0.96))",
+        "color": "#ffffff",
+        "boxShadow": "0 5px 18px rgba(92, 63, 196, 0.38)"
+      }
+    }
+  ]
+}
