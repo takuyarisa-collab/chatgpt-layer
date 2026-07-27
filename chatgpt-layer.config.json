@@ -1,8 +1,20 @@
 {
-  "version": "2026-07-27.1",
+  "version": "2026-07-28.1",
   "position": {
     "right": 14,
     "bottom": 94
+  },
+  "theme": {
+    "enabled": true,
+    "pageBackground": "#100d16",
+    "surfaceBackground": "#17121f",
+    "surfaceAltBackground": "#20192b",
+    "sidebarBackground": "#0c0a11",
+    "composerBackground": "#1c1626",
+    "textColor": "#f5f1fa",
+    "mutedTextColor": "#bdb5ca",
+    "borderColor": "rgba(168, 139, 250, 0.18)",
+    "accentColor": "#9f82ff"
   },
   "actions": [
     {
