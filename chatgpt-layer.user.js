@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         ChatGPT Layer
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.1.1
+// @version      0.1.2
 // @description  Add personal shortcut actions to ChatGPT Web.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
-// @run-at       document-idle
+// @run-at       document-start
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.meta.js
 // @downloadURL  https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.user.js
@@ -19,12 +19,13 @@
   const BUTTON_ID = `${LAYER_ID}-shiori-button`;
   const STYLE_ID = `${LAYER_ID}-style`;
   const SHIORI_TEXT = "しおり";
+  const APP_BANNER_META_SELECTOR = 'meta[name="apple-itunes-app"]';
 
   const SELECTORS = {
     editor: [
       "#prompt-textarea",
       'textarea[data-id="root"]',
-      'form textarea',
+      "form textarea",
       'form [contenteditable="true"]',
     ],
     sendButton: [
@@ -42,6 +43,31 @@
 
   const sleep = (milliseconds) =>
     new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+  function removeSmartAppBannerMeta(root = document) {
+    root.querySelectorAll?.(APP_BANNER_META_SELECTOR).forEach((element) => {
+      element.remove();
+    });
+  }
+
+  // Safari may detect this meta tag very early. Remove it as soon as the
+  // userscript starts, and keep removing it if the page adds it again.
+  removeSmartAppBannerMeta();
+
+  const bannerObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof Element)) continue;
+
+        if (node.matches(APP_BANNER_META_SELECTOR)) {
+          node.remove();
+          continue;
+        }
+
+        removeSmartAppBannerMeta(node);
+      }
+    }
+  });
 
   function queryFirst(selectors, root = document) {
     for (const selector of selectors) {
@@ -61,7 +87,10 @@
 
   function findSendButton(editor) {
     const form = findComposerForm(editor);
-    return queryFirst(SELECTORS.sendButton, form ?? document) ?? queryFirst(SELECTORS.sendButton);
+    return (
+      queryFirst(SELECTORS.sendButton, form ?? document) ??
+      queryFirst(SELECTORS.sendButton)
+    );
   }
 
   function isGenerating() {
@@ -70,9 +99,14 @@
 
   function getEditorText(editor) {
     if (!editor) return "";
-    if (editor instanceof HTMLTextAreaElement || editor instanceof HTMLInputElement) {
+
+    if (
+      editor instanceof HTMLTextAreaElement ||
+      editor instanceof HTMLInputElement
+    ) {
       return editor.value.trim();
     }
+
     return (editor.innerText || editor.textContent || "").trim();
   }
 
@@ -87,7 +121,9 @@
         }),
       );
     } catch {
-      editor.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+      editor.dispatchEvent(
+        new Event("input", { bubbles: true, composed: true }),
+      );
     }
 
     editor.dispatchEvent(new Event("change", { bubbles: true }));
@@ -95,7 +131,10 @@
 
   function setTextareaValue(editor, text) {
     const prototype = Object.getPrototypeOf(editor);
-    const valueSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      prototype,
+      "value",
+    )?.set;
 
     if (valueSetter) {
       valueSetter.call(editor, text);
@@ -124,7 +163,10 @@
   }
 
   function setEditorValue(editor, text) {
-    if (editor instanceof HTMLTextAreaElement || editor instanceof HTMLInputElement) {
+    if (
+      editor instanceof HTMLTextAreaElement ||
+      editor instanceof HTMLInputElement
+    ) {
       setTextareaValue(editor, text);
       editor.focus();
       return;
@@ -162,7 +204,9 @@
 
     const editor = findEditor();
     if (!editor) {
-      showMessage("入力欄が見つかりませんでした。画面を再読み込みしてみてください。");
+      showMessage(
+        "入力欄が見つかりませんでした。画面を再読み込みしてみてください。",
+      );
       return;
     }
 
@@ -193,7 +237,7 @@
   }
 
   function installStyle() {
-    if (document.getElementById(STYLE_ID)) return;
+    if (!document.head || document.getElementById(STYLE_ID)) return false;
 
     const style = document.createElement("style");
     style.id = STYLE_ID;
@@ -229,6 +273,7 @@
     `;
 
     document.head.appendChild(style);
+    return true;
   }
 
   function updateButtonState(button) {
@@ -236,7 +281,7 @@
   }
 
   function installButton() {
-    installStyle();
+    if (!document.body || !installStyle()) return;
 
     let button = document.getElementById(BUTTON_ID);
     if (!button) {
@@ -263,10 +308,25 @@
     });
   }
 
-  installButton();
+  function start() {
+    const root = document.documentElement;
+    if (!root) {
+      window.setTimeout(start, 0);
+      return;
+    }
 
-  new MutationObserver(scheduleInstall).observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
+    bannerObserver.observe(root, { childList: true, subtree: true });
+
+    installButton();
+    new MutationObserver(scheduleInstall).observe(root, {
+      childList: true,
+      subtree: true,
+    });
+
+    document.addEventListener("DOMContentLoaded", scheduleInstall, {
+      once: true,
+    });
+  }
+
+  start();
 })();
