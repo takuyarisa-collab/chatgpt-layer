@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Layer
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.1.0
+// @version      0.1.1
 // @description  Add personal shortcut actions to ChatGPT Web.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
@@ -204,13 +204,13 @@
         bottom: calc(env(safe-area-inset-bottom, 0px) + 94px);
         z-index: 2147483647;
         appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.20);
+        border: 1px solid rgba(224, 216, 255, 0.72);
         border-radius: 999px;
         padding: 10px 15px;
-        background: rgba(29, 29, 34, 0.88);
+        background: linear-gradient(135deg, rgba(139, 110, 255, 0.96), rgba(101, 76, 214, 0.96));
         color: #fff;
         font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        box-shadow: 0 5px 18px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 5px 18px rgba(92, 63, 196, 0.38);
         -webkit-backdrop-filter: blur(14px);
         backdrop-filter: blur(14px);
         touch-action: manipulation;
