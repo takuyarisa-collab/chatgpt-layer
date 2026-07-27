@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Layer
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.1.0
+// @version      0.1.1
 // @description  Add personal shortcut actions to ChatGPT Web.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
