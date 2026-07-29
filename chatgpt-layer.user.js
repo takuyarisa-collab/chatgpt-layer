@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.4.0
-// @description  Select a ChatGPT Layer from the current project URL.
+// @version      0.5.0
+// @description  Select a ChatGPT Layer and provide shared actions for every project.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -19,8 +19,10 @@
   "use strict";
 
   const LAYER_ID = "chatgpt-layer";
+  const ACTIONS_ID = `${LAYER_ID}-actions`;
+  const STYLE_ID = `${LAYER_ID}-style`;
   const STATUS_ID = `${LAYER_ID}-status`;
-  const CACHE_KEY = `${LAYER_ID}:last-good-config:v2`;
+  const CACHE_KEY = `${LAYER_ID}:last-good-config:v3`;
 
   const LAYER_ATTRIBUTE = "data-chatgpt-layer";
   const PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
@@ -31,9 +33,19 @@
     "https://cdn.jsdelivr.net/gh/takuyarisa-collab/chatgpt-layer@main/chatgpt-layer.config.json",
   ];
 
+  const DEFAULT_SCROLL_ACTION = {
+    id: "scroll-bottom",
+    type: "scrollToBottom",
+    label: "↓",
+    ariaLabel: "一番下までスクロールする",
+  };
+
   const DEFAULT_CONFIG = {
-    version: "builtin-0.4.0",
-    base: {},
+    version: "builtin-0.5.0",
+    base: {
+      position: { right: 14, bottom: 112 },
+      actions: [DEFAULT_SCROLL_ACTION],
+    },
     projects: {},
     layers: {
       default: {},
@@ -108,21 +120,75 @@
       : {};
   }
 
+  function normalizeNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, number) : fallback;
+  }
+
+  function normalizePosition(value, fallback = {}) {
+    const position = normalizeRecord(value);
+    const normalized = {};
+
+    if (Object.hasOwn(position, "right") || Object.hasOwn(fallback, "right")) {
+      normalized.right = normalizeNumber(position.right, fallback.right ?? 14);
+    }
+
+    if (Object.hasOwn(position, "bottom") || Object.hasOwn(fallback, "bottom")) {
+      normalized.bottom = normalizeNumber(position.bottom, fallback.bottom ?? 112);
+    }
+
+    return normalized;
+  }
+
+  function normalizeAction(value) {
+    const action = normalizeRecord(value);
+    if (!/^[a-z0-9_-]+$/i.test(String(action.id ?? ""))) return null;
+    if (action.type !== "scrollToBottom") return null;
+
+    return {
+      id: String(action.id),
+      type: action.type,
+      label: String(action.label ?? "↓").slice(0, 24),
+      ariaLabel: String(
+        action.ariaLabel ?? action.label ?? "一番下までスクロールする",
+      ).slice(0, 80),
+    };
+  }
+
+  function normalizeActions(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(normalizeAction).filter(Boolean);
+  }
+
+  function normalizeLayer(value) {
+    const layer = normalizeRecord(value);
+    return {
+      position: normalizePosition(layer.position),
+      actions: normalizeActions(layer.actions),
+    };
+  }
+
   function validateConfig(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       throw new Error("設定ファイルの形式が不正です。");
     }
+
+    const rawBase = normalizeRecord(value.base);
+    const base = {
+      position: normalizePosition(rawBase.position, DEFAULT_CONFIG.base.position),
+      actions: normalizeActions(rawBase.actions),
+    };
 
     const rawLayers = normalizeRecord(value.layers);
     const layers = {};
 
     for (const [layerName, layerConfig] of Object.entries(rawLayers)) {
       if (/^[a-z0-9_-]+$/i.test(layerName)) {
-        layers[layerName] = normalizeRecord(layerConfig);
+        layers[layerName] = normalizeLayer(layerConfig);
       }
     }
 
-    if (!layers.default) layers.default = {};
+    if (!layers.default) layers.default = normalizeLayer({});
 
     const rawProjects = normalizeRecord(value.projects);
     const projects = {};
@@ -139,7 +205,7 @@
 
     return {
       version: String(value.version ?? "unknown"),
-      base: normalizeRecord(value.base),
+      base,
       projects,
       layers,
     };
@@ -184,6 +250,16 @@
     return match?.[1] ?? null;
   }
 
+  function mergeActions(baseActions, layerActions) {
+    const actions = new Map();
+
+    for (const action of [...baseActions, ...layerActions]) {
+      actions.set(action.id, action);
+    }
+
+    return [...actions.values()];
+  }
+
   function resolveContext(config = activeConfig) {
     const projectId = getProjectId();
     const requestedLayer = projectId
@@ -192,14 +268,169 @@
     const layerName = config.layers[requestedLayer]
       ? requestedLayer
       : "default";
+    const layer = config.layers[layerName];
 
     return {
       configVersion: config.version,
       projectId,
       layerName,
-      base: config.base,
-      layer: config.layers[layerName],
+      position: {
+        right: layer.position.right ?? config.base.position.right,
+        bottom: layer.position.bottom ?? config.base.position.bottom,
+      },
+      actions: mergeActions(config.base.actions, layer.actions),
     };
+  }
+
+  function isScrollable(element) {
+    if (!(element instanceof Element)) return false;
+    if (element.clientHeight <= 0 || element.scrollHeight <= element.clientHeight + 8) {
+      return false;
+    }
+
+    const overflowY = getComputedStyle(element).overflowY;
+    return ["auto", "scroll", "overlay"].includes(overflowY);
+  }
+
+  function findScrollContainer() {
+    const conversationTurns = document.querySelectorAll(
+      'article[data-testid^="conversation-turn"], [data-message-author-role]',
+    );
+    const lastTurn = conversationTurns[conversationTurns.length - 1] ?? null;
+    const anchors = [
+      lastTurn,
+      document.querySelector("main"),
+      document.querySelector('[role="main"]'),
+      document.querySelector("#prompt-textarea"),
+    ];
+
+    for (const anchor of anchors) {
+      let element = anchor instanceof Element ? anchor : null;
+      while (element && element !== document.body) {
+        if (isScrollable(element)) return element;
+        element = element.parentElement;
+      }
+    }
+
+    return document.scrollingElement ?? document.documentElement;
+  }
+
+  function performScrollToBottom() {
+    const target = findScrollContainer();
+    const isDocumentTarget =
+      target === document.scrollingElement ||
+      target === document.documentElement ||
+      target === document.body;
+
+    if (isDocumentTarget) {
+      const bottom = Math.max(
+        document.documentElement.scrollHeight,
+        document.body?.scrollHeight ?? 0,
+      );
+      window.scrollTo({ top: bottom, left: 0, behavior: "auto" });
+      return;
+    }
+
+    target.scrollTo({ top: target.scrollHeight, left: 0, behavior: "auto" });
+  }
+
+  function scrollToBottom() {
+    performScrollToBottom();
+    window.requestAnimationFrame(performScrollToBottom);
+    window.setTimeout(performScrollToBottom, 120);
+  }
+
+  function runAction(action) {
+    if (action.type === "scrollToBottom") {
+      scrollToBottom();
+    }
+  }
+
+  function installStyle() {
+    if (!document.head || document.getElementById(STYLE_ID)) return;
+
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      #${ACTIONS_ID} {
+        position: fixed;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+      }
+
+      #${ACTIONS_ID} button {
+        min-width: 44px;
+        height: 44px;
+        padding: 0 14px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        background: rgba(30, 30, 34, 0.88);
+        color: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 5px 18px rgba(0, 0, 0, 0.28);
+        font: 700 20px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(14px);
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      #${ACTIONS_ID} button:active {
+        transform: scale(0.94);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function renderActions(context) {
+    if (!document.body) return;
+    installStyle();
+
+    let bar = document.getElementById(ACTIONS_ID);
+
+    if (!context.actions.length) {
+      bar?.remove();
+      return;
+    }
+
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = ACTIONS_ID;
+      document.body.appendChild(bar);
+    }
+
+    bar.style.right = `${context.position.right}px`;
+    bar.style.bottom =
+      `calc(env(safe-area-inset-bottom, 0px) + ${context.position.bottom}px)`;
+    bar.dataset.configVersion = context.configVersion;
+    bar.dataset.layer = context.layerName;
+
+    const expectedIds = new Set();
+
+    for (const action of context.actions) {
+      const buttonId = `${LAYER_ID}-action-${action.id}`;
+      expectedIds.add(buttonId);
+
+      let button = document.getElementById(buttonId);
+      if (!button) {
+        button = document.createElement("button");
+        button.id = buttonId;
+        button.type = "button";
+        bar.appendChild(button);
+      }
+
+      if (button.textContent !== action.label) button.textContent = action.label;
+      button.setAttribute("aria-label", action.ariaLabel);
+      button.dataset.actionType = action.type;
+      button.onclick = () => runAction(action);
+    }
+
+    for (const child of [...bar.children]) {
+      if (!expectedIds.has(child.id)) child.remove();
+    }
   }
 
   function applyContext(context) {
@@ -214,6 +445,8 @@
     } else {
       root.removeAttribute(PROJECT_ATTRIBUTE);
     }
+
+    renderActions(context);
 
     const contextKey = `${context.configVersion}:${context.projectId ?? "none"}:${context.layerName}`;
     if (contextKey !== lastContextKey) {
@@ -240,7 +473,7 @@
       Object.assign(status.style, {
         position: "fixed",
         right: "14px",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 94px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 166px)",
         zIndex: "2147483647",
         border: "1px solid rgba(255, 211, 145, 0.55)",
         borderRadius: "999px",
@@ -298,7 +531,7 @@
       render();
     } catch (error) {
       console.warn("[ChatGPT Layer] Remote config load failed.", error);
-      showStatus("設定取得失敗・空の内蔵レイヤーで動作中");
+      showStatus("設定取得失敗・内蔵の共通ボタンで動作中");
     }
   }
 
