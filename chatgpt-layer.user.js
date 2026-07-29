@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.6.1
-// @description  Select a ChatGPT Layer and provide shared page controls.
+// @version      0.7.0
+// @description  Merge global, project, and chat layers and provide shared page controls.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -21,9 +21,11 @@
   var LAYER_ID = "chatgpt-layer";
   var SCROLL_BUTTON_ID = LAYER_ID + "-scroll-bottom";
   var RELOAD_BUTTON_ID = LAYER_ID + "-reload";
-  var CACHE_KEY = LAYER_ID + ":last-good-config:v4";
+  var CACHE_KEY = LAYER_ID + ":last-good-config:v5";
   var LAYER_ATTRIBUTE = "data-chatgpt-layer";
+  var LAYERS_ATTRIBUTE = "data-chatgpt-layers";
   var PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
+  var CHAT_ATTRIBUTE = "data-chatgpt-chat-id";
   var VERSION_ATTRIBUTE = "data-chatgpt-layer-config-version";
 
   var CONFIG_URLS = [
@@ -32,9 +34,10 @@
   ];
 
   var DEFAULT_CONFIG = {
-    version: "builtin-0.6.1",
-    base: {},
+    version: "builtin-0.7.0",
+    global: {},
     projects: {},
+    chats: {},
     layers: { default: {} }
   };
 
@@ -42,10 +45,105 @@
   var renderScheduled = false;
   var lastContextKey = "";
 
+  function isRecord(value) {
+    return value && typeof value === "object" && !Array.isArray(value);
+  }
+
   function normalizeRecord(value) {
-    return value && typeof value === "object" && !Array.isArray(value)
-      ? value
-      : {};
+    return isRecord(value) ? value : {};
+  }
+
+  function isSafeKey(key) {
+    return key !== "__proto__" && key !== "prototype" && key !== "constructor";
+  }
+
+  function cloneValue(value) {
+    if (Array.isArray(value)) {
+      return value.map(cloneValue);
+    }
+
+    if (isRecord(value)) {
+      var copy = {};
+      Object.keys(value).forEach(function (key) {
+        if (isSafeKey(key)) copy[key] = cloneValue(value[key]);
+      });
+      return copy;
+    }
+
+    return value;
+  }
+
+  function hasStableIds(values) {
+    return values.every(function (item) {
+      return isRecord(item) && typeof item.id === "string" && item.id.length > 0;
+    });
+  }
+
+  function mergeArrays(base, override) {
+    if (!hasStableIds(base) || !hasStableIds(override)) {
+      return cloneValue(override);
+    }
+
+    var result = base.map(cloneValue);
+    var indexes = {};
+
+    result.forEach(function (item, index) {
+      indexes[item.id] = index;
+    });
+
+    override.forEach(function (item) {
+      if (Object.prototype.hasOwnProperty.call(indexes, item.id)) {
+        var index = indexes[item.id];
+        result[index] = mergeValues(result[index], item);
+      } else {
+        indexes[item.id] = result.length;
+        result.push(cloneValue(item));
+      }
+    });
+
+    return result;
+  }
+
+  function mergeValues(base, override) {
+    if (Array.isArray(base) && Array.isArray(override)) {
+      return mergeArrays(base, override);
+    }
+
+    if (isRecord(base) && isRecord(override)) {
+      var result = cloneValue(base);
+      Object.keys(override).forEach(function (key) {
+        if (!isSafeKey(key)) return;
+        if (Object.prototype.hasOwnProperty.call(result, key)) {
+          result[key] = mergeValues(result[key], override[key]);
+        } else {
+          result[key] = cloneValue(override[key]);
+        }
+      });
+      return result;
+    }
+
+    return cloneValue(override);
+  }
+
+  function normalizeLayerSelection(value, layers) {
+    var candidates = [];
+
+    if (typeof value === "string") {
+      candidates = [value];
+    } else if (Array.isArray(value)) {
+      candidates = value;
+    } else if (isRecord(value)) {
+      if (typeof value.layer === "string") candidates.push(value.layer);
+      if (Array.isArray(value.layers)) candidates = candidates.concat(value.layers);
+    }
+
+    var seen = {};
+    return candidates.filter(function (layerName) {
+      if (typeof layerName !== "string") return false;
+      if (!layers[layerName] || seen[layerName]) return false;
+      seen[layerName] = true;
+      return true;
+    });
   }
 
   function validateConfig(value) {
@@ -58,7 +156,7 @@
 
     Object.keys(rawLayers).forEach(function (layerName) {
       if (/^[a-z0-9_-]+$/i.test(layerName)) {
-        layers[layerName] = normalizeRecord(rawLayers[layerName]);
+        layers[layerName] = cloneValue(normalizeRecord(rawLayers[layerName]));
       }
     });
 
@@ -68,20 +166,28 @@
     var projects = {};
 
     Object.keys(rawProjects).forEach(function (projectId) {
-      var layerName = rawProjects[projectId];
-      if (
-        /^g-p-[a-z0-9]+$/i.test(projectId) &&
-        typeof layerName === "string" &&
-        layers[layerName]
-      ) {
-        projects[projectId] = layerName;
-      }
+      if (!/^g-p-[a-z0-9]+$/i.test(projectId)) return;
+      var selection = normalizeLayerSelection(rawProjects[projectId], layers);
+      if (selection.length) projects[projectId] = selection;
     });
+
+    var rawChats = normalizeRecord(value.chats);
+    var chats = {};
+
+    Object.keys(rawChats).forEach(function (chatId) {
+      if (!/^[a-z0-9-]{8,128}$/i.test(chatId)) return;
+      var selection = normalizeLayerSelection(rawChats[chatId], layers);
+      if (selection.length) chats[chatId] = selection;
+    });
+
+    var legacyBase = normalizeRecord(value.base);
+    var globalConfig = mergeValues(legacyBase, normalizeRecord(value.global));
 
     return {
       version: String(value.version || "unknown"),
-      base: normalizeRecord(value.base),
+      global: globalConfig,
       projects: projects,
+      chats: chats,
       layers: layers
     };
   }
@@ -183,19 +289,42 @@
     return match ? match[1] : null;
   }
 
+  function getChatId(pathname) {
+    var path = pathname || location.pathname;
+    var match = path.match(/\/c\/([a-z0-9-]{8,128})(?:\/|$)/i);
+    return match ? match[1] : null;
+  }
+
+  function appendUnique(target, values) {
+    values.forEach(function (value) {
+      if (target.indexOf(value) < 0) target.push(value);
+    });
+  }
+
   function resolveContext(config) {
     var projectId = getProjectId();
-    var requestedLayer = projectId
-      ? config.projects[projectId] || "default"
-      : "default";
-    var layerName = config.layers[requestedLayer]
-      ? requestedLayer
-      : "default";
+    var chatId = getChatId();
+    var projectLayers = projectId ? config.projects[projectId] || [] : [];
+    var chatLayers = chatId ? config.chats[chatId] || [] : [];
+    var layerNames = [];
+
+    appendUnique(layerNames, projectLayers);
+    appendUnique(layerNames, chatLayers);
+
+    if (!layerNames.length) layerNames.push("default");
+
+    var settings = cloneValue(config.global);
+    layerNames.forEach(function (layerName) {
+      settings = mergeValues(settings, config.layers[layerName] || {});
+    });
 
     return {
       configVersion: config.version,
       projectId: projectId,
-      layerName: layerName
+      chatId: chatId,
+      layerNames: layerNames,
+      layerName: layerNames[layerNames.length - 1],
+      settings: settings
     };
   }
 
@@ -379,6 +508,7 @@
     if (!root) return;
 
     root.setAttribute(LAYER_ATTRIBUTE, context.layerName);
+    root.setAttribute(LAYERS_ATTRIBUTE, context.layerNames.join(" "));
     root.setAttribute(VERSION_ATTRIBUTE, context.configVersion);
 
     if (context.projectId) {
@@ -387,19 +517,29 @@
       root.removeAttribute(PROJECT_ATTRIBUTE);
     }
 
+    if (context.chatId) {
+      root.setAttribute(CHAT_ATTRIBUTE, context.chatId);
+    } else {
+      root.removeAttribute(CHAT_ATTRIBUTE);
+    }
+
     ensureSharedButtons();
 
     var contextKey =
       context.configVersion + ":" +
       (context.projectId || "none") + ":" +
-      context.layerName;
+      (context.chatId || "none") + ":" +
+      context.layerNames.join(",");
 
     if (contextKey !== lastContextKey) {
       lastContextKey = contextKey;
-      console.info("[ChatGPT Layer] Active layer", {
+      console.info("[ChatGPT Layer] Active layers", {
         projectId: context.projectId,
-        layer: context.layerName,
-        configVersion: context.configVersion
+        chatId: context.chatId,
+        layers: context.layerNames,
+        topLayer: context.layerName,
+        configVersion: context.configVersion,
+        settings: context.settings
       });
     }
   }
