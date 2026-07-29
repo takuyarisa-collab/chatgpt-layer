@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.6.1
-// @description  Select a ChatGPT Layer and provide shared page controls.
+// @version      0.7.0
+// @description  Merge global, project, and chat layers and provide shared page controls.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
