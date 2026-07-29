@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.6.0
+// @version      0.6.1
 // @description  Select a ChatGPT Layer and provide shared page controls.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
@@ -32,7 +32,7 @@
   ];
 
   var DEFAULT_CONFIG = {
-    version: "builtin-0.6.0",
+    version: "builtin-0.6.1",
     base: {},
     projects: {},
     layers: { default: {} }
@@ -290,18 +290,23 @@
     style.setProperty(property, value, "important");
   }
 
-  function applyButtonStyle(button, bottom, fontSize) {
+  function applyButtonStyle(button, right, fontSize) {
     var style = button.style;
     setImportant(style, "position", "fixed");
-    setImportant(style, "right", "16px");
-    setImportant(style, "bottom", bottom + "px");
+    setImportant(style, "top", "auto");
+    setImportant(style, "left", "auto");
+    setImportant(style, "right", right + "px");
+    setImportant(style, "bottom", "120px");
     setImportant(style, "z-index", "2147483647");
+    setImportant(style, "box-sizing", "border-box");
     setImportant(style, "display", "grid");
     setImportant(style, "place-items", "center");
     setImportant(style, "width", "40px");
     setImportant(style, "min-width", "40px");
+    setImportant(style, "max-width", "40px");
     setImportant(style, "height", "40px");
     setImportant(style, "min-height", "40px");
+    setImportant(style, "max-height", "40px");
     setImportant(style, "margin", "0");
     setImportant(style, "padding", "0");
     setImportant(style, "border", "1.5px solid rgba(255,255,255,0.82)");
@@ -313,16 +318,19 @@
     setImportant(style, "font-size", fontSize + "px");
     setImportant(style, "font-weight", "800");
     setImportant(style, "line-height", "1");
+    setImportant(style, "text-align", "center");
     setImportant(style, "opacity", "1");
     setImportant(style, "visibility", "visible");
+    setImportant(style, "overflow", "visible");
     setImportant(style, "pointer-events", "auto");
     setImportant(style, "transform", "none");
     setImportant(style, "appearance", "none");
     setImportant(style, "-webkit-appearance", "none");
     setImportant(style, "touch-action", "manipulation");
+    setImportant(style, "-webkit-tap-highlight-color", "transparent");
   }
 
-  function ensureActionButton(id, label, ariaLabel, bottom, fontSize, onClick) {
+  function ensureActionButton(id, label, ariaLabel, right, fontSize, onClick) {
     if (!document.body) return null;
 
     var button = document.getElementById(id);
@@ -342,7 +350,7 @@
     button.disabled = false;
     button.removeAttribute("aria-hidden");
     button.onclick = onClick;
-    applyButtonStyle(button, bottom, fontSize);
+    applyButtonStyle(button, right, fontSize);
 
     return button;
   }
@@ -352,7 +360,7 @@
       RELOAD_BUTTON_ID,
       "↻",
       "ページを再読み込みする",
-      168,
+      64,
       20,
       reloadPage
     );
@@ -360,7 +368,7 @@
       SCROLL_BUTTON_ID,
       "↓",
       "一番下までスクロールする",
-      120,
+      16,
       21,
       scrollToBottom
     );
