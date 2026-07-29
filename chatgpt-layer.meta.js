@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.3.0
-// @description  Load ChatGPT Layer settings and theme from GitHub without executing remote code.
+// @version      0.4.0
+// @description  Select a ChatGPT Layer from the current project URL.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
