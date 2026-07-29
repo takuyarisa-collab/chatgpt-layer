@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.6.0
+// @version      0.6.1
 // @description  Select a ChatGPT Layer and provide shared page controls.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
