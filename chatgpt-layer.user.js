@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.5.1
-// @description  Select a ChatGPT Layer and provide shared actions for every project.
+// @version      0.5.2
+// @description  Select a ChatGPT Layer and provide a shared scroll button.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -15,45 +15,31 @@
 // @downloadURL  https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.user.js
 // ==/UserScript==
 
-(() => {
+(function () {
   "use strict";
 
-  const LAYER_ID = "chatgpt-layer";
-  const HOST_ID = `${LAYER_ID}-host`;
-  const CACHE_KEY = `${LAYER_ID}:last-good-config:v3`;
+  var LAYER_ID = "chatgpt-layer";
+  var BUTTON_ID = LAYER_ID + "-scroll-bottom";
+  var CACHE_KEY = LAYER_ID + ":last-good-config:v4";
+  var LAYER_ATTRIBUTE = "data-chatgpt-layer";
+  var PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
+  var VERSION_ATTRIBUTE = "data-chatgpt-layer-config-version";
 
-  const LAYER_ATTRIBUTE = "data-chatgpt-layer";
-  const PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
-  const VERSION_ATTRIBUTE = "data-chatgpt-layer-config-version";
-
-  const CONFIG_URLS = [
+  var CONFIG_URLS = [
     "https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.config.json",
-    "https://cdn.jsdelivr.net/gh/takuyarisa-collab/chatgpt-layer@main/chatgpt-layer.config.json",
+    "https://cdn.jsdelivr.net/gh/takuyarisa-collab/chatgpt-layer@main/chatgpt-layer.config.json"
   ];
 
-  const DEFAULT_SCROLL_ACTION = {
-    id: "scroll-bottom",
-    type: "scrollToBottom",
-    label: "↓",
-    ariaLabel: "一番下までスクロールする",
-  };
-
-  const DEFAULT_CONFIG = {
-    version: "builtin-0.5.1",
-    base: {
-      position: { right: 14, bottom: 112 },
-      actions: [DEFAULT_SCROLL_ACTION],
-    },
+  var DEFAULT_CONFIG = {
+    version: "builtin-0.5.2",
+    base: {},
     projects: {},
-    layers: { default: {} },
+    layers: { default: {} }
   };
 
-  let activeConfig = DEFAULT_CONFIG;
-  let renderScheduled = false;
-  let lastContextKey = "";
-
-  const hasOwn = (object, key) =>
-    Object.prototype.hasOwnProperty.call(object, key);
+  var activeConfig = DEFAULT_CONFIG;
+  var renderScheduled = false;
+  var lastContextKey = "";
 
   function normalizeRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value)
@@ -61,84 +47,27 @@
       : {};
   }
 
-  function normalizeNumber(value, fallback) {
-    const number = Number(value);
-    return Number.isFinite(number) ? Math.max(0, number) : fallback;
-  }
-
-  function normalizePosition(value, fallback = {}) {
-    const position = normalizeRecord(value);
-    const normalized = {};
-
-    if (hasOwn(position, "right") || hasOwn(fallback, "right")) {
-      normalized.right = normalizeNumber(position.right, fallback.right ?? 14);
-    }
-
-    if (hasOwn(position, "bottom") || hasOwn(fallback, "bottom")) {
-      normalized.bottom = normalizeNumber(position.bottom, fallback.bottom ?? 112);
-    }
-
-    return normalized;
-  }
-
-  function normalizeAction(value) {
-    const action = normalizeRecord(value);
-    const id = String(action.id ?? "");
-
-    if (!/^[a-z0-9_-]+$/i.test(id)) return null;
-    if (action.type !== "scrollToBottom") return null;
-
-    return {
-      id,
-      type: action.type,
-      label: String(action.label ?? "↓").slice(0, 24),
-      ariaLabel: String(
-        action.ariaLabel ?? action.label ?? "一番下までスクロールする",
-      ).slice(0, 80),
-    };
-  }
-
-  function normalizeActions(value) {
-    if (!Array.isArray(value)) return [];
-    return value.map(normalizeAction).filter(Boolean);
-  }
-
-  function normalizeLayer(value) {
-    const layer = normalizeRecord(value);
-    return {
-      position: normalizePosition(layer.position),
-      actions: normalizeActions(layer.actions),
-    };
-  }
-
   function validateConfig(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       throw new Error("設定ファイルの形式が不正です。");
     }
 
-    const rawBase = normalizeRecord(value.base);
-    const base = {
-      position: normalizePosition(rawBase.position, DEFAULT_CONFIG.base.position),
-      actions: normalizeActions(rawBase.actions),
-    };
+    var rawLayers = normalizeRecord(value.layers);
+    var layers = {};
 
-    if (!base.actions.length) base.actions = [DEFAULT_SCROLL_ACTION];
-
-    const rawLayers = normalizeRecord(value.layers);
-    const layers = {};
-
-    for (const [layerName, layerConfig] of Object.entries(rawLayers)) {
+    Object.keys(rawLayers).forEach(function (layerName) {
       if (/^[a-z0-9_-]+$/i.test(layerName)) {
-        layers[layerName] = normalizeLayer(layerConfig);
+        layers[layerName] = normalizeRecord(rawLayers[layerName]);
       }
-    }
+    });
 
-    if (!layers.default) layers.default = normalizeLayer({});
+    if (!layers.default) layers.default = {};
 
-    const rawProjects = normalizeRecord(value.projects);
-    const projects = {};
+    var rawProjects = normalizeRecord(value.projects);
+    var projects = {};
 
-    for (const [projectId, layerName] of Object.entries(rawProjects)) {
+    Object.keys(rawProjects).forEach(function (projectId) {
+      var layerName = rawProjects[projectId];
       if (
         /^g-p-[a-z0-9]+$/i.test(projectId) &&
         typeof layerName === "string" &&
@@ -146,46 +75,51 @@
       ) {
         projects[projectId] = layerName;
       }
-    }
+    });
 
     return {
-      version: String(value.version ?? "unknown"),
-      base,
-      projects,
-      layers,
+      version: String(value.version || "unknown"),
+      base: normalizeRecord(value.base),
+      projects: projects,
+      layers: layers
     };
   }
 
   function requestWithLegacyGM(url) {
-    return new Promise((resolve, reject) => {
+    return new Promise(function (resolve, reject) {
       GM_xmlhttpRequest({
         method: "GET",
-        url,
+        url: url,
         headers: { "Cache-Control": "no-cache" },
         timeout: 10000,
-        onload(response) {
+        onload: function (response) {
           if (response.status >= 200 && response.status < 300) {
             resolve(response.responseText);
           } else {
-            reject(new Error(`HTTP ${response.status}`));
+            reject(new Error("HTTP " + response.status));
           }
         },
-        onerror: () => reject(new Error("network error")),
-        ontimeout: () => reject(new Error("timeout")),
+        onerror: function () {
+          reject(new Error("network error"));
+        },
+        ontimeout: function () {
+          reject(new Error("timeout"));
+        }
       });
     });
   }
 
   async function requestText(url) {
-    const target = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+    var separator = url.indexOf("?") >= 0 ? "&" : "?";
+    var target = url + separator + "t=" + Date.now();
 
     try {
-      const response = await fetch(target, {
+      var response = await fetch(target, {
         cache: "no-store",
-        credentials: "omit",
+        credentials: "omit"
       });
       if (response.ok) return response.text();
-    } catch {
+    } catch (error) {
       // Try Userscript APIs next.
     }
 
@@ -193,41 +127,41 @@
       return requestWithLegacyGM(target);
     }
 
-    if (globalThis.GM?.xmlHttpRequest) {
-      const response = await globalThis.GM.xmlHttpRequest({
+    if (globalThis.GM && typeof globalThis.GM.xmlHttpRequest === "function") {
+      var gmResponse = await globalThis.GM.xmlHttpRequest({
         method: "GET",
         url: target,
         headers: { "Cache-Control": "no-cache" },
-        timeout: 10000,
+        timeout: 10000
       });
-      if (response.status >= 200 && response.status < 300) {
-        return response.responseText;
+      if (gmResponse.status >= 200 && gmResponse.status < 300) {
+        return gmResponse.responseText;
       }
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error("HTTP " + gmResponse.status);
     }
 
     throw new Error("利用できる通信手段がありません。");
   }
 
   async function loadRemoteConfig() {
-    let lastError = null;
+    var lastError = null;
 
-    for (const url of CONFIG_URLS) {
+    for (var index = 0; index < CONFIG_URLS.length; index += 1) {
       try {
-        return validateConfig(JSON.parse(await requestText(url)));
+        return validateConfig(JSON.parse(await requestText(CONFIG_URLS[index])));
       } catch (error) {
         lastError = error;
       }
     }
 
-    throw lastError ?? new Error("設定を取得できませんでした。");
+    throw lastError || new Error("設定を取得できませんでした。");
   }
 
   function readCachedConfig() {
     try {
-      const text = localStorage.getItem(CACHE_KEY);
+      var text = localStorage.getItem(CACHE_KEY);
       return text ? validateConfig(JSON.parse(text)) : null;
-    } catch {
+    } catch (error) {
       return null;
     }
   }
@@ -235,102 +169,93 @@
   function writeCachedConfig(config) {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify(config));
-    } catch {
+    } catch (error) {
       // Continue without a cache.
     }
   }
 
-  function getProjectId(pathname = location.pathname) {
-    const match = pathname.match(
-      /^\/g\/(g-p-[a-z0-9]{16,64})(?:-[^/]+)?(?:\/|$)/i,
+  function getProjectId(pathname) {
+    var path = pathname || location.pathname;
+    var match = path.match(
+      /^\/g\/(g-p-[a-z0-9]{16,64})(?:-[^/]+)?(?:\/|$)/i
     );
-    return match?.[1] ?? null;
+    return match ? match[1] : null;
   }
 
-  function mergeActions(baseActions, layerActions) {
-    const actions = new Map();
-    for (const action of [...baseActions, ...layerActions]) {
-      actions.set(action.id, action);
-    }
-    return [...actions.values()];
-  }
-
-  function resolveContext(config = activeConfig) {
-    const projectId = getProjectId();
-    const requestedLayer = projectId
-      ? config.projects[projectId] ?? "default"
+  function resolveContext(config) {
+    var projectId = getProjectId();
+    var requestedLayer = projectId
+      ? config.projects[projectId] || "default"
       : "default";
-    const layerName = config.layers[requestedLayer]
+    var layerName = config.layers[requestedLayer]
       ? requestedLayer
       : "default";
-    const layer = config.layers[layerName] ?? normalizeLayer({});
 
     return {
       configVersion: config.version,
-      projectId,
-      layerName,
-      position: {
-        right: layer.position.right ?? config.base.position.right ?? 14,
-        bottom: layer.position.bottom ?? config.base.position.bottom ?? 112,
-      },
-      actions: mergeActions(config.base.actions, layer.actions),
+      projectId: projectId,
+      layerName: layerName
     };
   }
 
-  function isScrollable(element) {
-    if (!(element instanceof Element)) return false;
-    if (element.clientHeight <= 0) return false;
-    if (element.scrollHeight <= element.clientHeight + 8) return false;
-
-    const overflowY = getComputedStyle(element).overflowY;
-    return ["auto", "scroll", "overlay"].includes(overflowY);
-  }
-
   function findScrollContainer() {
-    const turns = document.querySelectorAll(
-      'article[data-testid^="conversation-turn"], [data-message-author-role]',
+    var turns = document.querySelectorAll(
+      'article[data-testid^="conversation-turn"], [data-message-author-role]'
     );
-    const lastTurn = turns[turns.length - 1] ?? null;
-    const anchors = [
+    var lastTurn = turns.length ? turns[turns.length - 1] : null;
+    var anchors = [
       lastTurn,
       document.querySelector("#prompt-textarea"),
       document.querySelector("main"),
-      document.querySelector('[role="main"]'),
+      document.querySelector('[role="main"]')
     ];
 
-    for (const anchor of anchors) {
-      let element = anchor instanceof Element ? anchor : null;
+    for (var anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
+      var element = anchors[anchorIndex];
       while (element && element !== document.documentElement) {
-        if (isScrollable(element)) return element;
+        if (
+          element instanceof Element &&
+          element.clientHeight > 0 &&
+          element.scrollHeight > element.clientHeight + 8
+        ) {
+          var overflowY = getComputedStyle(element).overflowY;
+          if (
+            overflowY === "auto" ||
+            overflowY === "scroll" ||
+            overflowY === "overlay"
+          ) {
+            return element;
+          }
+        }
         element = element.parentElement;
       }
     }
 
-    return document.scrollingElement ?? document.documentElement;
+    return document.scrollingElement || document.documentElement;
   }
 
   function performScrollToBottom() {
-    const nativeButton = document.querySelector(
-      'button[data-testid="scroll-to-bottom-button"], button[aria-label="Scroll to bottom"], button[aria-label="一番下までスクロール"]',
+    var nativeButton = document.querySelector(
+      'button[data-testid="scroll-to-bottom-button"], button[aria-label="Scroll to bottom"], button[aria-label="一番下までスクロール"]'
     );
-    if (nativeButton instanceof HTMLButtonElement) nativeButton.click();
 
-    const target = findScrollContainer();
-    const isDocumentTarget =
+    if (nativeButton && typeof nativeButton.click === "function") {
+      nativeButton.click();
+    }
+
+    var target = findScrollContainer();
+    var isDocumentTarget =
       target === document.scrollingElement ||
       target === document.documentElement ||
       target === document.body;
 
     if (isDocumentTarget) {
-      const bottom = Math.max(
-        document.documentElement.scrollHeight,
-        document.body?.scrollHeight ?? 0,
-      );
+      var bodyHeight = document.body ? document.body.scrollHeight : 0;
+      var bottom = Math.max(document.documentElement.scrollHeight, bodyHeight);
       window.scrollTo(0, bottom);
-      return;
+    } else {
+      target.scrollTop = target.scrollHeight;
     }
-
-    target.scrollTop = target.scrollHeight;
   }
 
   function scrollToBottom() {
@@ -339,122 +264,66 @@
     window.setTimeout(performScrollToBottom, 120);
   }
 
-  function runAction(action) {
-    if (action.type === "scrollToBottom") scrollToBottom();
+  function setImportant(style, property, value) {
+    style.setProperty(property, value, "important");
   }
 
-  function ensureHost() {
-    let host = document.getElementById(HOST_ID);
+  function ensureScrollButton() {
+    if (!document.body) return null;
 
-    if (!host) {
-      host = document.createElement("div");
-      host.id = HOST_ID;
-      host.setAttribute("role", "group");
-      host.setAttribute("aria-label", "ChatGPT Layer actions");
-      document.documentElement.appendChild(host);
+    var button = document.getElementById(BUTTON_ID);
+    if (!button) {
+      button = document.createElement("button");
+      button.id = BUTTON_ID;
+      button.type = "button";
+      button.textContent = "↓";
+      button.setAttribute("aria-label", "一番下までスクロールする");
+      button.setAttribute("title", "一番下までスクロールする");
+      document.body.appendChild(button);
+    } else if (button.parentElement !== document.body) {
+      document.body.appendChild(button);
     }
 
-    Object.assign(host.style, {
-      position: "fixed",
-      zIndex: "2147483647",
-      display: "block",
-      width: "auto",
-      height: "auto",
-      margin: "0",
-      padding: "0",
-      border: "0",
-      opacity: "1",
-      visibility: "visible",
-      pointerEvents: "none",
-      transform: "translateZ(0)",
-      isolation: "isolate",
-    });
+    button.hidden = false;
+    button.disabled = false;
+    button.removeAttribute("aria-hidden");
+    button.onclick = scrollToBottom;
 
-    if (!host.shadowRoot) {
-      const shadow = host.attachShadow({ mode: "open" });
-      shadow.innerHTML = `
-        <style>
-          :host { all: initial; }
-          #actions {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 8px;
-            pointer-events: none;
-          }
-          button {
-            all: initial;
-            box-sizing: border-box;
-            display: grid;
-            place-items: center;
-            min-width: 46px;
-            width: 46px;
-            height: 46px;
-            padding: 0;
-            border: 1px solid rgba(255, 255, 255, 0.32);
-            border-radius: 999px;
-            background: rgba(30, 30, 34, 0.94);
-            color: #ffffff;
-            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.38);
-            font: 700 23px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            -webkit-backdrop-filter: blur(14px);
-            backdrop-filter: blur(14px);
-            cursor: pointer;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-            pointer-events: auto;
-          }
-          button:active { transform: scale(0.92); }
-        </style>
-        <div id="actions"></div>
-      `;
-    }
+    var style = button.style;
+    setImportant(style, "position", "fixed");
+    setImportant(style, "right", "16px");
+    setImportant(style, "bottom", "120px");
+    setImportant(style, "z-index", "2147483647");
+    setImportant(style, "display", "grid");
+    setImportant(style, "place-items", "center");
+    setImportant(style, "width", "48px");
+    setImportant(style, "min-width", "48px");
+    setImportant(style, "height", "48px");
+    setImportant(style, "min-height", "48px");
+    setImportant(style, "margin", "0");
+    setImportant(style, "padding", "0");
+    setImportant(style, "border", "2px solid rgba(255,255,255,0.85)");
+    setImportant(style, "border-radius", "999px");
+    setImportant(style, "background", "#7c3aed");
+    setImportant(style, "color", "#ffffff");
+    setImportant(style, "box-shadow", "0 6px 24px rgba(0,0,0,0.55)");
+    setImportant(style, "font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
+    setImportant(style, "font-size", "26px");
+    setImportant(style, "font-weight", "800");
+    setImportant(style, "line-height", "1");
+    setImportant(style, "opacity", "1");
+    setImportant(style, "visibility", "visible");
+    setImportant(style, "pointer-events", "auto");
+    setImportant(style, "transform", "none");
+    setImportant(style, "appearance", "none");
+    setImportant(style, "-webkit-appearance", "none");
+    setImportant(style, "touch-action", "manipulation");
 
-    return host;
-  }
-
-  function renderActions(context) {
-    if (!document.documentElement) return;
-
-    const host = ensureHost();
-    host.style.right = `${context.position.right}px`;
-    host.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${context.position.bottom}px)`;
-    host.dataset.configVersion = context.configVersion;
-    host.dataset.layer = context.layerName;
-
-    const container = host.shadowRoot?.getElementById("actions");
-    if (!container) return;
-
-    const expectedIds = new Set();
-
-    for (const action of context.actions) {
-      const buttonId = `action-${action.id}`;
-      expectedIds.add(buttonId);
-
-      let button = container.querySelector(`#${CSS.escape(buttonId)}`);
-      if (!button) {
-        button = document.createElement("button");
-        button.id = buttonId;
-        button.type = "button";
-        container.appendChild(button);
-      }
-
-      button.textContent = action.label;
-      button.setAttribute("aria-label", action.ariaLabel);
-      button.setAttribute("title", action.ariaLabel);
-      button.onclick = () => runAction(action);
-    }
-
-    for (const child of [...container.children]) {
-      if (!expectedIds.has(child.id)) child.remove();
-    }
-
-    host.style.display = context.actions.length ? "block" : "none";
+    return button;
   }
 
   function applyContext(context) {
-    const root = document.documentElement;
+    var root = document.documentElement;
     if (!root) return;
 
     root.setAttribute(LAYER_ATTRIBUTE, context.layerName);
@@ -466,56 +335,59 @@
       root.removeAttribute(PROJECT_ATTRIBUTE);
     }
 
-    renderActions(context);
+    ensureScrollButton();
 
-    const contextKey = `${context.configVersion}:${context.projectId ?? "none"}:${context.layerName}`;
+    var contextKey =
+      context.configVersion + ":" +
+      (context.projectId || "none") + ":" +
+      context.layerName;
+
     if (contextKey !== lastContextKey) {
       lastContextKey = contextKey;
       console.info("[ChatGPT Layer] Active layer", {
         projectId: context.projectId,
         layer: context.layerName,
-        configVersion: context.configVersion,
-        actions: context.actions.map((action) => action.id),
+        configVersion: context.configVersion
       });
     }
   }
 
   function render() {
-    applyContext(resolveContext());
+    applyContext(resolveContext(activeConfig));
   }
 
   function scheduleRender() {
     if (renderScheduled) return;
     renderScheduled = true;
-    requestAnimationFrame(() => {
+    requestAnimationFrame(function () {
       renderScheduled = false;
       render();
     });
   }
 
   function observeNavigation() {
-    for (const methodName of ["pushState", "replaceState"]) {
-      const original = history[methodName];
-      if (typeof original !== "function") continue;
+    ["pushState", "replaceState"].forEach(function (methodName) {
+      var original = history[methodName];
+      if (typeof original !== "function") return;
 
-      history[methodName] = function patchedHistoryMethod(...args) {
-        const result = original.apply(this, args);
+      history[methodName] = function () {
+        var result = original.apply(this, arguments);
         scheduleRender();
         return result;
       };
-    }
+    });
 
     window.addEventListener("popstate", scheduleRender);
     window.addEventListener("hashchange", scheduleRender);
 
     new MutationObserver(scheduleRender).observe(document.documentElement, {
       childList: true,
-      subtree: true,
+      subtree: true
     });
   }
 
   async function start() {
-    activeConfig = readCachedConfig() ?? DEFAULT_CONFIG;
+    activeConfig = readCachedConfig() || DEFAULT_CONFIG;
     render();
     observeNavigation();
 
