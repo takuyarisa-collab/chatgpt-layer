@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.5.3
-// @description  Select a ChatGPT Layer and provide a shared scroll button.
+// @version      0.6.0
+// @description  Select a ChatGPT Layer and provide shared page controls.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -19,7 +19,8 @@
   "use strict";
 
   var LAYER_ID = "chatgpt-layer";
-  var BUTTON_ID = LAYER_ID + "-scroll-bottom";
+  var SCROLL_BUTTON_ID = LAYER_ID + "-scroll-bottom";
+  var RELOAD_BUTTON_ID = LAYER_ID + "-reload";
   var CACHE_KEY = LAYER_ID + ":last-good-config:v4";
   var LAYER_ATTRIBUTE = "data-chatgpt-layer";
   var PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
@@ -31,7 +32,7 @@
   ];
 
   var DEFAULT_CONFIG = {
-    version: "builtin-0.5.3",
+    version: "builtin-0.6.0",
     base: {},
     projects: {},
     layers: { default: {} }
@@ -264,35 +265,36 @@
     window.setTimeout(performScrollToBottom, 120);
   }
 
+  function getEditorText() {
+    var editor = document.querySelector(
+      '#prompt-textarea, textarea[data-id="root"], form textarea, form [contenteditable="true"]'
+    );
+
+    if (!editor) return "";
+    if (typeof editor.value === "string") return editor.value.trim();
+    return String(editor.innerText || editor.textContent || "").trim();
+  }
+
+  function reloadPage() {
+    if (
+      getEditorText() &&
+      !window.confirm("入力中の文章があります。ページを再読み込みしますか？")
+    ) {
+      return;
+    }
+
+    window.location.reload();
+  }
+
   function setImportant(style, property, value) {
     style.setProperty(property, value, "important");
   }
 
-  function ensureScrollButton() {
-    if (!document.body) return null;
-
-    var button = document.getElementById(BUTTON_ID);
-    if (!button) {
-      button = document.createElement("button");
-      button.id = BUTTON_ID;
-      button.type = "button";
-      button.textContent = "↓";
-      button.setAttribute("aria-label", "一番下までスクロールする");
-      button.setAttribute("title", "一番下までスクロールする");
-      document.body.appendChild(button);
-    } else if (button.parentElement !== document.body) {
-      document.body.appendChild(button);
-    }
-
-    button.hidden = false;
-    button.disabled = false;
-    button.removeAttribute("aria-hidden");
-    button.onclick = scrollToBottom;
-
+  function applyButtonStyle(button, bottom, fontSize) {
     var style = button.style;
     setImportant(style, "position", "fixed");
     setImportant(style, "right", "16px");
-    setImportant(style, "bottom", "120px");
+    setImportant(style, "bottom", bottom + "px");
     setImportant(style, "z-index", "2147483647");
     setImportant(style, "display", "grid");
     setImportant(style, "place-items", "center");
@@ -308,7 +310,7 @@
     setImportant(style, "color", "#ffffff");
     setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.48)");
     setImportant(style, "font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
-    setImportant(style, "font-size", "21px");
+    setImportant(style, "font-size", fontSize + "px");
     setImportant(style, "font-weight", "800");
     setImportant(style, "line-height", "1");
     setImportant(style, "opacity", "1");
@@ -318,8 +320,50 @@
     setImportant(style, "appearance", "none");
     setImportant(style, "-webkit-appearance", "none");
     setImportant(style, "touch-action", "manipulation");
+  }
+
+  function ensureActionButton(id, label, ariaLabel, bottom, fontSize, onClick) {
+    if (!document.body) return null;
+
+    var button = document.getElementById(id);
+    if (!button) {
+      button = document.createElement("button");
+      button.id = id;
+      button.type = "button";
+      document.body.appendChild(button);
+    } else if (button.parentElement !== document.body) {
+      document.body.appendChild(button);
+    }
+
+    button.textContent = label;
+    button.setAttribute("aria-label", ariaLabel);
+    button.setAttribute("title", ariaLabel);
+    button.hidden = false;
+    button.disabled = false;
+    button.removeAttribute("aria-hidden");
+    button.onclick = onClick;
+    applyButtonStyle(button, bottom, fontSize);
 
     return button;
+  }
+
+  function ensureSharedButtons() {
+    ensureActionButton(
+      RELOAD_BUTTON_ID,
+      "↻",
+      "ページを再読み込みする",
+      168,
+      20,
+      reloadPage
+    );
+    ensureActionButton(
+      SCROLL_BUTTON_ID,
+      "↓",
+      "一番下までスクロールする",
+      120,
+      21,
+      scrollToBottom
+    );
   }
 
   function applyContext(context) {
@@ -335,7 +379,7 @@
       root.removeAttribute(PROJECT_ATTRIBUTE);
     }
 
-    ensureScrollButton();
+    ensureSharedButtons();
 
     var contextKey =
       context.configVersion + ":" +
