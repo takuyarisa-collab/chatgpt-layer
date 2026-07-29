@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.5.0
+// @version      0.5.1
 // @description  Select a ChatGPT Layer and provide shared actions for every project.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
@@ -19,9 +19,7 @@
   "use strict";
 
   const LAYER_ID = "chatgpt-layer";
-  const ACTIONS_ID = `${LAYER_ID}-actions`;
-  const STYLE_ID = `${LAYER_ID}-style`;
-  const STATUS_ID = `${LAYER_ID}-status`;
+  const HOST_ID = `${LAYER_ID}-host`;
   const CACHE_KEY = `${LAYER_ID}:last-good-config:v3`;
 
   const LAYER_ATTRIBUTE = "data-chatgpt-layer";
@@ -41,78 +39,21 @@
   };
 
   const DEFAULT_CONFIG = {
-    version: "builtin-0.5.0",
+    version: "builtin-0.5.1",
     base: {
       position: { right: 14, bottom: 112 },
       actions: [DEFAULT_SCROLL_ACTION],
     },
     projects: {},
-    layers: {
-      default: {},
-    },
+    layers: { default: {} },
   };
 
   let activeConfig = DEFAULT_CONFIG;
-  let scheduled = false;
+  let renderScheduled = false;
   let lastContextKey = "";
 
-  function requestWithLegacyGM(url) {
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: "GET",
-        url,
-        headers: { "Cache-Control": "no-cache" },
-        timeout: 10000,
-        onload(response) {
-          if (response.status >= 200 && response.status < 300) {
-            resolve(response.responseText);
-          } else {
-            reject(new Error(`HTTP ${response.status}`));
-          }
-        },
-        onerror() {
-          reject(new Error("network error"));
-        },
-        ontimeout() {
-          reject(new Error("timeout"));
-        },
-      });
-    });
-  }
-
-  async function requestText(url) {
-    const target = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
-
-    try {
-      const response = await fetch(target, {
-        cache: "no-store",
-        credentials: "omit",
-      });
-      if (response.ok) return response.text();
-    } catch {
-      // Try Userscript APIs next.
-    }
-
-    if (typeof GM_xmlhttpRequest === "function") {
-      return requestWithLegacyGM(target);
-    }
-
-    if (globalThis.GM?.xmlHttpRequest) {
-      const response = await globalThis.GM.xmlHttpRequest({
-        method: "GET",
-        url: target,
-        headers: { "Cache-Control": "no-cache" },
-        timeout: 10000,
-      });
-
-      if (response.status >= 200 && response.status < 300) {
-        return response.responseText;
-      }
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    throw new Error("利用できる通信手段がありません。");
-  }
+  const hasOwn = (object, key) =>
+    Object.prototype.hasOwnProperty.call(object, key);
 
   function normalizeRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value)
@@ -129,11 +70,11 @@
     const position = normalizeRecord(value);
     const normalized = {};
 
-    if (Object.hasOwn(position, "right") || Object.hasOwn(fallback, "right")) {
+    if (hasOwn(position, "right") || hasOwn(fallback, "right")) {
       normalized.right = normalizeNumber(position.right, fallback.right ?? 14);
     }
 
-    if (Object.hasOwn(position, "bottom") || Object.hasOwn(fallback, "bottom")) {
+    if (hasOwn(position, "bottom") || hasOwn(fallback, "bottom")) {
       normalized.bottom = normalizeNumber(position.bottom, fallback.bottom ?? 112);
     }
 
@@ -142,11 +83,13 @@
 
   function normalizeAction(value) {
     const action = normalizeRecord(value);
-    if (!/^[a-z0-9_-]+$/i.test(String(action.id ?? ""))) return null;
+    const id = String(action.id ?? "");
+
+    if (!/^[a-z0-9_-]+$/i.test(id)) return null;
     if (action.type !== "scrollToBottom") return null;
 
     return {
-      id: String(action.id),
+      id,
       type: action.type,
       label: String(action.label ?? "↓").slice(0, 24),
       ariaLabel: String(
@@ -178,6 +121,8 @@
       position: normalizePosition(rawBase.position, DEFAULT_CONFIG.base.position),
       actions: normalizeActions(rawBase.actions),
     };
+
+    if (!base.actions.length) base.actions = [DEFAULT_SCROLL_ACTION];
 
     const rawLayers = normalizeRecord(value.layers);
     const layers = {};
@@ -211,13 +156,65 @@
     };
   }
 
+  function requestWithLegacyGM(url) {
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url,
+        headers: { "Cache-Control": "no-cache" },
+        timeout: 10000,
+        onload(response) {
+          if (response.status >= 200 && response.status < 300) {
+            resolve(response.responseText);
+          } else {
+            reject(new Error(`HTTP ${response.status}`));
+          }
+        },
+        onerror: () => reject(new Error("network error")),
+        ontimeout: () => reject(new Error("timeout")),
+      });
+    });
+  }
+
+  async function requestText(url) {
+    const target = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+
+    try {
+      const response = await fetch(target, {
+        cache: "no-store",
+        credentials: "omit",
+      });
+      if (response.ok) return response.text();
+    } catch {
+      // Try Userscript APIs next.
+    }
+
+    if (typeof GM_xmlhttpRequest === "function") {
+      return requestWithLegacyGM(target);
+    }
+
+    if (globalThis.GM?.xmlHttpRequest) {
+      const response = await globalThis.GM.xmlHttpRequest({
+        method: "GET",
+        url: target,
+        headers: { "Cache-Control": "no-cache" },
+        timeout: 10000,
+      });
+      if (response.status >= 200 && response.status < 300) {
+        return response.responseText;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    throw new Error("利用できる通信手段がありません。");
+  }
+
   async function loadRemoteConfig() {
     let lastError = null;
 
     for (const url of CONFIG_URLS) {
       try {
-        const text = await requestText(url);
-        return validateConfig(JSON.parse(text));
+        return validateConfig(JSON.parse(await requestText(url)));
       } catch (error) {
         lastError = error;
       }
@@ -252,11 +249,9 @@
 
   function mergeActions(baseActions, layerActions) {
     const actions = new Map();
-
     for (const action of [...baseActions, ...layerActions]) {
       actions.set(action.id, action);
     }
-
     return [...actions.values()];
   }
 
@@ -268,15 +263,15 @@
     const layerName = config.layers[requestedLayer]
       ? requestedLayer
       : "default";
-    const layer = config.layers[layerName];
+    const layer = config.layers[layerName] ?? normalizeLayer({});
 
     return {
       configVersion: config.version,
       projectId,
       layerName,
       position: {
-        right: layer.position.right ?? config.base.position.right,
-        bottom: layer.position.bottom ?? config.base.position.bottom,
+        right: layer.position.right ?? config.base.position.right ?? 14,
+        bottom: layer.position.bottom ?? config.base.position.bottom ?? 112,
       },
       actions: mergeActions(config.base.actions, layer.actions),
     };
@@ -284,29 +279,28 @@
 
   function isScrollable(element) {
     if (!(element instanceof Element)) return false;
-    if (element.clientHeight <= 0 || element.scrollHeight <= element.clientHeight + 8) {
-      return false;
-    }
+    if (element.clientHeight <= 0) return false;
+    if (element.scrollHeight <= element.clientHeight + 8) return false;
 
     const overflowY = getComputedStyle(element).overflowY;
     return ["auto", "scroll", "overlay"].includes(overflowY);
   }
 
   function findScrollContainer() {
-    const conversationTurns = document.querySelectorAll(
+    const turns = document.querySelectorAll(
       'article[data-testid^="conversation-turn"], [data-message-author-role]',
     );
-    const lastTurn = conversationTurns[conversationTurns.length - 1] ?? null;
+    const lastTurn = turns[turns.length - 1] ?? null;
     const anchors = [
       lastTurn,
+      document.querySelector("#prompt-textarea"),
       document.querySelector("main"),
       document.querySelector('[role="main"]'),
-      document.querySelector("#prompt-textarea"),
     ];
 
     for (const anchor of anchors) {
       let element = anchor instanceof Element ? anchor : null;
-      while (element && element !== document.body) {
+      while (element && element !== document.documentElement) {
         if (isScrollable(element)) return element;
         element = element.parentElement;
       }
@@ -316,6 +310,11 @@
   }
 
   function performScrollToBottom() {
+    const nativeButton = document.querySelector(
+      'button[data-testid="scroll-to-bottom-button"], button[aria-label="Scroll to bottom"], button[aria-label="一番下までスクロール"]',
+    );
+    if (nativeButton instanceof HTMLButtonElement) nativeButton.click();
+
     const target = findScrollContainer();
     const isDocumentTarget =
       target === document.scrollingElement ||
@@ -327,110 +326,131 @@
         document.documentElement.scrollHeight,
         document.body?.scrollHeight ?? 0,
       );
-      window.scrollTo({ top: bottom, left: 0, behavior: "auto" });
+      window.scrollTo(0, bottom);
       return;
     }
 
-    target.scrollTo({ top: target.scrollHeight, left: 0, behavior: "auto" });
+    target.scrollTop = target.scrollHeight;
   }
 
   function scrollToBottom() {
     performScrollToBottom();
-    window.requestAnimationFrame(performScrollToBottom);
+    requestAnimationFrame(performScrollToBottom);
     window.setTimeout(performScrollToBottom, 120);
   }
 
   function runAction(action) {
-    if (action.type === "scrollToBottom") {
-      scrollToBottom();
-    }
+    if (action.type === "scrollToBottom") scrollToBottom();
   }
 
-  function installStyle() {
-    if (!document.head || document.getElementById(STYLE_ID)) return;
+  function ensureHost() {
+    let host = document.getElementById(HOST_ID);
 
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = `
-      #${ACTIONS_ID} {
-        position: fixed;
-        z-index: 2147483647;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
-      }
+    if (!host) {
+      host = document.createElement("div");
+      host.id = HOST_ID;
+      host.setAttribute("role", "group");
+      host.setAttribute("aria-label", "ChatGPT Layer actions");
+      document.documentElement.appendChild(host);
+    }
 
-      #${ACTIONS_ID} button {
-        min-width: 44px;
-        height: 44px;
-        padding: 0 14px;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 999px;
-        background: rgba(30, 30, 34, 0.88);
-        color: rgba(255, 255, 255, 0.94);
-        box-shadow: 0 5px 18px rgba(0, 0, 0, 0.28);
-        font: 700 20px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        -webkit-backdrop-filter: blur(14px);
-        backdrop-filter: blur(14px);
-        touch-action: manipulation;
-        user-select: none;
-        -webkit-user-select: none;
-      }
+    Object.assign(host.style, {
+      position: "fixed",
+      zIndex: "2147483647",
+      display: "block",
+      width: "auto",
+      height: "auto",
+      margin: "0",
+      padding: "0",
+      border: "0",
+      opacity: "1",
+      visibility: "visible",
+      pointerEvents: "none",
+      transform: "translateZ(0)",
+      isolation: "isolate",
+    });
 
-      #${ACTIONS_ID} button:active {
-        transform: scale(0.94);
-      }
-    `;
-    document.head.appendChild(style);
+    if (!host.shadowRoot) {
+      const shadow = host.attachShadow({ mode: "open" });
+      shadow.innerHTML = `
+        <style>
+          :host { all: initial; }
+          #actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            pointer-events: none;
+          }
+          button {
+            all: initial;
+            box-sizing: border-box;
+            display: grid;
+            place-items: center;
+            min-width: 46px;
+            width: 46px;
+            height: 46px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.32);
+            border-radius: 999px;
+            background: rgba(30, 30, 34, 0.94);
+            color: #ffffff;
+            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.38);
+            font: 700 23px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+            cursor: pointer;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            pointer-events: auto;
+          }
+          button:active { transform: scale(0.92); }
+        </style>
+        <div id="actions"></div>
+      `;
+    }
+
+    return host;
   }
 
   function renderActions(context) {
-    if (!document.body) return;
-    installStyle();
+    if (!document.documentElement) return;
 
-    let bar = document.getElementById(ACTIONS_ID);
+    const host = ensureHost();
+    host.style.right = `${context.position.right}px`;
+    host.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${context.position.bottom}px)`;
+    host.dataset.configVersion = context.configVersion;
+    host.dataset.layer = context.layerName;
 
-    if (!context.actions.length) {
-      bar?.remove();
-      return;
-    }
-
-    if (!bar) {
-      bar = document.createElement("div");
-      bar.id = ACTIONS_ID;
-      document.body.appendChild(bar);
-    }
-
-    bar.style.right = `${context.position.right}px`;
-    bar.style.bottom =
-      `calc(env(safe-area-inset-bottom, 0px) + ${context.position.bottom}px)`;
-    bar.dataset.configVersion = context.configVersion;
-    bar.dataset.layer = context.layerName;
+    const container = host.shadowRoot?.getElementById("actions");
+    if (!container) return;
 
     const expectedIds = new Set();
 
     for (const action of context.actions) {
-      const buttonId = `${LAYER_ID}-action-${action.id}`;
+      const buttonId = `action-${action.id}`;
       expectedIds.add(buttonId);
 
-      let button = document.getElementById(buttonId);
+      let button = container.querySelector(`#${CSS.escape(buttonId)}`);
       if (!button) {
         button = document.createElement("button");
         button.id = buttonId;
         button.type = "button";
-        bar.appendChild(button);
+        container.appendChild(button);
       }
 
-      if (button.textContent !== action.label) button.textContent = action.label;
+      button.textContent = action.label;
       button.setAttribute("aria-label", action.ariaLabel);
-      button.dataset.actionType = action.type;
+      button.setAttribute("title", action.ariaLabel);
       button.onclick = () => runAction(action);
     }
 
-    for (const child of [...bar.children]) {
+    for (const child of [...container.children]) {
       if (!expectedIds.has(child.id)) child.remove();
     }
+
+    host.style.display = context.actions.length ? "block" : "none";
   }
 
   function applyContext(context) {
@@ -455,6 +475,7 @@
         projectId: context.projectId,
         layer: context.layerName,
         configVersion: context.configVersion,
+        actions: context.actions.map((action) => action.id),
       });
     }
   }
@@ -463,38 +484,11 @@
     applyContext(resolveContext());
   }
 
-  function showStatus(message) {
-    if (!document.body) return;
-
-    let status = document.getElementById(STATUS_ID);
-    if (!status) {
-      status = document.createElement("div");
-      status.id = STATUS_ID;
-      Object.assign(status.style, {
-        position: "fixed",
-        right: "14px",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 166px)",
-        zIndex: "2147483647",
-        border: "1px solid rgba(255, 211, 145, 0.55)",
-        borderRadius: "999px",
-        padding: "7px 10px",
-        background: "rgba(79, 60, 25, 0.92)",
-        color: "#fff2d5",
-        font: '600 11px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      });
-      document.body.appendChild(status);
-    }
-
-    status.textContent = message;
-    window.setTimeout(() => status.remove(), 6000);
-  }
-
   function scheduleRender() {
-    if (scheduled) return;
-    scheduled = true;
-
-    window.requestAnimationFrame(() => {
-      scheduled = false;
+    if (renderScheduled) return;
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      renderScheduled = false;
       render();
     });
   }
@@ -531,7 +525,8 @@
       render();
     } catch (error) {
       console.warn("[ChatGPT Layer] Remote config load failed.", error);
-      showStatus("設定取得失敗・内蔵の共通ボタンで動作中");
+      activeConfig = DEFAULT_CONFIG;
+      render();
     }
   }
 
