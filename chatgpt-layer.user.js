@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.5.2
+// @version      0.5.3
 // @description  Select a ChatGPT Layer and provide a shared scroll button.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
@@ -31,7 +31,7 @@
   ];
 
   var DEFAULT_CONFIG = {
-    version: "builtin-0.5.2",
+    version: "builtin-0.5.3",
     base: {},
     projects: {},
     layers: { default: {} }
@@ -296,19 +296,19 @@
     setImportant(style, "z-index", "2147483647");
     setImportant(style, "display", "grid");
     setImportant(style, "place-items", "center");
-    setImportant(style, "width", "48px");
-    setImportant(style, "min-width", "48px");
-    setImportant(style, "height", "48px");
-    setImportant(style, "min-height", "48px");
+    setImportant(style, "width", "40px");
+    setImportant(style, "min-width", "40px");
+    setImportant(style, "height", "40px");
+    setImportant(style, "min-height", "40px");
     setImportant(style, "margin", "0");
     setImportant(style, "padding", "0");
-    setImportant(style, "border", "2px solid rgba(255,255,255,0.85)");
+    setImportant(style, "border", "1.5px solid rgba(255,255,255,0.82)");
     setImportant(style, "border-radius", "999px");
     setImportant(style, "background", "#7c3aed");
     setImportant(style, "color", "#ffffff");
-    setImportant(style, "box-shadow", "0 6px 24px rgba(0,0,0,0.55)");
+    setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.48)");
     setImportant(style, "font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
-    setImportant(style, "font-size", "26px");
+    setImportant(style, "font-size", "21px");
     setImportant(style, "font-weight", "800");
     setImportant(style, "line-height", "1");
     setImportant(style, "opacity", "1");
