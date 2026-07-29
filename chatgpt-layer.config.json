@@ -1,22 +1,12 @@
 {
-  "version": "2026-07-29.2",
-  "base": {
-    "position": {
-      "right": 14,
-      "bottom": 112
-    },
-    "actions": [
-      {
-        "id": "scroll-bottom",
-        "type": "scrollToBottom",
-        "label": "↓",
-        "ariaLabel": "一番下までスクロールする"
-      }
-    ]
-  },
+  "version": "2026-07-30.1",
+  "global": {},
   "projects": {
-    "g-p-6a47aadbce188191b178e125bd7c4e86": "brain"
+    "g-p-6a47aadbce188191b178e125bd7c4e86": {
+      "layer": "brain"
+    }
   },
+  "chats": {},
   "layers": {
     "default": {},
     "brain": {},
