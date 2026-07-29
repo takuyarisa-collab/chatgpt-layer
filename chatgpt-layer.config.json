@@ -1,35 +1,14 @@
 {
-  "version": "2026-07-28.2",
-  "position": {
-    "right": 14,
-    "bottom": 94
+  "version": "2026-07-29.1",
+  "base": {},
+  "projects": {
+    "g-p-6a47aadbce188191b178e125bd7c4e86": "brain"
   },
-  "theme": {
-    "enabled": true,
-    "pageBackground": "#120a18",
-    "surfaceBackground": "#1a1023",
-    "surfaceAltBackground": "#281833",
-    "sidebarBackground": "#09070e",
-    "composerBackground": "#24152f",
-    "textColor": "#f7f2fb",
-    "mutedTextColor": "#c9bed4",
-    "borderColor": "rgba(190, 150, 255, 0.26)",
-    "accentColor": "#b996ff"
-  },
-  "actions": [
-    {
-      "id": "shiori",
-      "type": "prompt",
-      "label": "しおり",
-      "ariaLabel": "しおりを送信",
-      "text": "しおり",
-      "autoSend": true,
-      "style": {
-        "border": "1px solid rgba(235, 225, 255, 0.82)",
-        "background": "linear-gradient(135deg, rgba(174, 140, 255, 0.98), rgba(112, 78, 215, 0.98))",
-        "color": "#ffffff",
-        "boxShadow": "0 6px 22px rgba(126, 83, 220, 0.45)"
-      }
-    }
-  ]
+  "layers": {
+    "default": {},
+    "brain": {},
+    "shion": {},
+    "blank": {},
+    "ui": {}
+  }
 }
