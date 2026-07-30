@@ -17,6 +17,19 @@ ChatGPT画面の右下に `⇄` ボタンを追加します。
 ⇄  ↻  ↓
 ```
 
+## Gearへのインストール
+
+Gearのローカルインストール画面は `.crx` または `.xpi` を受け付けます。
+この実験はChrome系Manifest V3として作成しているため、Chromiumで生成した `.crx` を使用します。
+
+1. `gear-chatgpt-tab-switch.crx` をiPhoneへ保存する
+2. Gearの「拡張機能をインストール」を開く
+3. 「拡張機能ファイルを選択（.crx または .xpi）」を押す
+4. `.crx` を選択してインストールする
+5. ChatGPTタブを再読み込みする
+
+署名用の秘密鍵 `.pem` は配布・リポジトリ保存しません。
+
 ## テスト方法
 
 1. Gear BrowserでChatGPTタブを2枚以上開く
