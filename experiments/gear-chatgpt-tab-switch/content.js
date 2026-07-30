@@ -9,25 +9,88 @@
     style.setProperty(property, value, "important");
   }
 
-  function sendMessage(message) {
-    if (globalThis.browser && browser.runtime && browser.runtime.sendMessage) {
-      return browser.runtime.sendMessage(message);
+  function getRuntimeUrl(path) {
+    if (globalThis.chrome && chrome.runtime && chrome.runtime.getURL) {
+      return chrome.runtime.getURL(path);
     }
+    if (globalThis.browser && browser.runtime && browser.runtime.getURL) {
+      return browser.runtime.getURL(path);
+    }
+    throw new Error("runtime.getURL is unavailable");
+  }
 
+  function requestTabSwitch() {
     return new Promise(function (resolve, reject) {
-      if (!globalThis.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
-        reject(new Error("runtime.sendMessage is unavailable"));
+      if (!document.body) {
+        reject(new Error("document.body is unavailable"));
         return;
       }
 
-      chrome.runtime.sendMessage(message, function (response) {
-        var error = chrome.runtime.lastError;
-        if (error) {
-          reject(new Error(error.message));
-          return;
+      var requestId = "switch-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+      var frame = document.createElement("iframe");
+      var settled = false;
+      var timeoutId = 0;
+
+      function cleanup() {
+        window.removeEventListener("message", onMessage);
+        window.clearTimeout(timeoutId);
+        if (frame && frame.parentNode) frame.remove();
+      }
+
+      function finish(error, result) {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        if (error) reject(error);
+        else resolve(result);
+      }
+
+      function onMessage(event) {
+        var data = event.data;
+        if (event.source !== frame.contentWindow) return;
+        if (!data || data.source !== "gear-chatgpt-tab-switch-bridge") return;
+        if (data.type !== "result" || data.requestId !== requestId) return;
+        finish(null, data.result);
+      }
+
+      window.addEventListener("message", onMessage);
+
+      frame.setAttribute("aria-hidden", "true");
+      frame.tabIndex = -1;
+      frame.src = getRuntimeUrl("bridge.html");
+      setImportant(frame.style, "position", "fixed");
+      setImportant(frame.style, "width", "1px");
+      setImportant(frame.style, "height", "1px");
+      setImportant(frame.style, "right", "0");
+      setImportant(frame.style, "bottom", "0");
+      setImportant(frame.style, "border", "0");
+      setImportant(frame.style, "opacity", "0");
+      setImportant(frame.style, "pointer-events", "none");
+
+      frame.onload = function () {
+        try {
+          frame.contentWindow.postMessage(
+            {
+              source: "gear-chatgpt-tab-switch-content",
+              type: "switch-next-chatgpt-tab",
+              requestId: requestId
+            },
+            "*"
+          );
+        } catch (error) {
+          finish(error);
         }
-        resolve(response);
-      });
+      };
+
+      frame.onerror = function () {
+        finish(new Error("bridge.htmlを読み込めませんでした"));
+      };
+
+      timeoutId = window.setTimeout(function () {
+        finish(new Error("拡張機能ページから応答がありません"));
+      }, 5000);
+
+      document.body.appendChild(frame);
     });
   }
 
@@ -65,11 +128,10 @@
 
   async function switchTab(button) {
     button.disabled = true;
-    try {
-      var result = await sendMessage({
-        type: "gear-switch-next-chatgpt-tab"
-      });
+    ensureButton();
 
+    try {
+      var result = await requestTabSwitch();
       if (!result || !result.ok) {
         showMessage(
           result && result.message ? result.message : "タブを切り替えられませんでした。",
@@ -78,11 +140,12 @@
       }
     } catch (error) {
       showMessage(
-        "Web Extensionとの通信に失敗しました: " + String(error && error.message || error),
+        "タブ切替に失敗しました: " + String(error && error.message || error),
         true
       );
     } finally {
       button.disabled = false;
+      ensureButton();
     }
   }
 
