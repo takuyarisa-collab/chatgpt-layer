@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30.3",
+  "version": "2026-07-30.4",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -17,15 +17,15 @@
     "shion": {
       "theme": {
         "enabled": true,
-        "pageBackground": "#120a18",
-        "surfaceBackground": "#1a1023",
-        "surfaceAltBackground": "#281833",
-        "sidebarBackground": "#09070e",
-        "composerBackground": "#24152f",
-        "textColor": "#f7f2fb",
-        "mutedTextColor": "#c9bed4",
-        "borderColor": "rgba(190, 150, 255, 0.26)",
-        "accentColor": "#b996ff"
+        "pageBackground": "#241126",
+        "surfaceBackground": "#30172f",
+        "surfaceAltBackground": "#43203f",
+        "sidebarBackground": "#160c1a",
+        "composerBackground": "#39203b",
+        "textColor": "#fbf4fa",
+        "mutedTextColor": "#d7c1d2",
+        "borderColor": "rgba(232, 188, 228, 0.28)",
+        "accentColor": "#d7a8e8"
       }
     },
     "blank": {},
