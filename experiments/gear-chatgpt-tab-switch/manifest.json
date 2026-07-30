@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Tab Switch Test for Gear",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Adds a button that switches to the next open ChatGPT tab in Gear Browser.",
   "permissions": [
     "tabs"
@@ -10,9 +10,6 @@
     "https://chatgpt.com/*",
     "https://chat.openai.com/*"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
   "content_scripts": [
     {
       "matches": [
@@ -23,6 +20,18 @@
         "content.js"
       ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "bridge.html",
+        "bridge.js"
+      ],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ]
     }
   ]
 }
