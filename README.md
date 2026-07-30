@@ -14,6 +14,7 @@ ChatGPT Webをそのまま使いながら、共通設定・プロジェクト・
 - ChatGPT内の画面遷移時に自動で再判定
 - 未登録ページでは `default` レイヤーを適用
 - 現在のプロジェクト、チャット、適用レイヤーをHTML属性へ記録
+- レイヤー設定に応じたテーマ適用
 - 全画面共通のリロードボタンと最下部スクロールボタン
 - GitHubから取得するJSON設定の検証と端末内キャッシュ
 
@@ -57,7 +58,7 @@ chat ID:    CHAT_ID
 
 ```json
 {
-  "version": "2026-07-30.1",
+  "version": "2026-07-30.3",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -72,7 +73,11 @@ chat ID:    CHAT_ID
   "layers": {
     "default": {},
     "brain": {},
-    "shion": {},
+    "shion": {
+      "theme": {
+        "enabled": true
+      }
+    },
     "blank": {},
     "ui": {}
   }
@@ -130,7 +135,7 @@ chat ID:    CHAT_ID
   data-chatgpt-layers="brain shion"
   data-chatgpt-project-id="g-p-6a47aadbce188191b178e125bd7c4e86"
   data-chatgpt-chat-id="CHAT_ID"
-  data-chatgpt-layer-config-version="2026-07-30.1"
+  data-chatgpt-layer-config-version="2026-07-30.3"
 >
 ```
 
@@ -170,9 +175,12 @@ Gear Browser側の手動更新は不要です。
 
 ### 固定エンジン自体を変更する場合
 
-1. `chatgpt-layer.user.js` と `chatgpt-layer.meta.js` の `@version` を同じ値へ上げる
-2. Gear BrowserまたはUserscripts側で手動更新する
-3. ChatGPTを再読み込みする
+1. 変更前に、変更理由・影響範囲・手動更新の要否をTaCへ伝える
+2. `chatgpt-layer.user.js` と `chatgpt-layer.meta.js` の `@version` を同じ値へ上げる
+3. Gear BrowserまたはUserscripts側で手動更新する
+4. ChatGPTを再読み込みする
+
+固定エンジンはすべてのレイヤーに影響する可能性があります。レイヤー設定だけで実現できない場合に限って変更し、事前説明なしでは更新しません。
 
 ## Failure handling
 
@@ -189,4 +197,4 @@ GitHubへ接続できない場合は、最後に正常取得できた設定を�
 
 ## Next
 
-Brain内のシオン用チャットIDを `chats` へ登録し、`shion` レイヤーの見た目と機能を作ります。
+Shionレイヤーへ、シオン専用の見た目と機能を少しずつ追加します。
