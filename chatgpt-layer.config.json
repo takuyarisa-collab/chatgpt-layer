@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30.2",
+  "version": "2026-07-30.3",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -14,7 +14,20 @@
   "layers": {
     "default": {},
     "brain": {},
-    "shion": {},
+    "shion": {
+      "theme": {
+        "enabled": true,
+        "pageBackground": "#120a18",
+        "surfaceBackground": "#1a1023",
+        "surfaceAltBackground": "#281833",
+        "sidebarBackground": "#09070e",
+        "composerBackground": "#24152f",
+        "textColor": "#f7f2fb",
+        "mutedTextColor": "#c9bed4",
+        "borderColor": "rgba(190, 150, 255, 0.26)",
+        "accentColor": "#b996ff"
+      }
+    },
     "blank": {},
     "ui": {}
   }
