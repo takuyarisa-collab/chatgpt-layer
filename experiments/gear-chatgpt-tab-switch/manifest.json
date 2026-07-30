@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Tab Switch Test for Gear",
-  "version": "0.2.0",
+  "name": "ChatGPT Tab Switch Test for Gear v0.2.1",
+  "version": "0.2.1",
   "description": "Adds a button that switches to the next open ChatGPT tab in Gear Browser.",
   "permissions": [
     "tabs"
