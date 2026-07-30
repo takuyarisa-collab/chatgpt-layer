@@ -17,6 +17,12 @@ ChatGPT画面の右下に `⇄` ボタンを追加します。
 ⇄  ↻  ↓
 ```
 
+## v0.2.0
+
+Gearで `runtime.sendMessage()` が `Tab not found` になるため、Background Service Workerへのメッセージ送信を廃止しました。
+
+代わりに、ChatGPTページ内へ非表示の拡張機能ページ `bridge.html` を読み込み、その拡張機能ページ自身がTabs APIを直接実行します。
+
 ## Gearへのインストール
 
 Gearのローカルインストール画面は `.crx` または `.xpi` を受け付けます。
@@ -28,6 +34,8 @@ Gearのローカルインストール画面は `.crx` または `.xpi` を受け
 4. `.crx` を選択してインストールする
 5. ChatGPTタブを再読み込みする
 
+すでにv0.1.0を入れている場合は、同じ署名鍵で作ったv0.2.0を選択します。上書きされない場合は旧版を削除してから入れ直します。
+
 署名用の秘密鍵 `.pem` は配布・リポジトリ保存しません。
 
 ## テスト方法
@@ -38,9 +46,10 @@ Gearのローカルインストール画面は `.crx` または `.xpi` を受け
 
 表示される主なエラー：
 
-- `切替先のChatGPTタブがありません`：拡張は動作しているが、ChatGPTタブが1枚だけ
+- `切替先のChatGPTタブがありません`：拡張とTabs APIは動作しているが、ChatGPTタブが1枚だけ
 - `タブAPIを利用できません`：Gear側でTabs APIまたは権限が利用できない
-- `Web Extensionとの通信に失敗しました`：Background Service Workerが動いていない
+- `bridge.htmlを読み込めませんでした`：Web Accessible Resourceが利用できない
+- `拡張機能ページから応答がありません`：iframeの拡張機能コンテキストが動作していない
 
 ## 権限
 
@@ -52,5 +61,6 @@ Gearのローカルインストール画面は `.crx` または `.xpi` を受け
 ## 収録ファイル
 
 - `manifest.json`
-- `background.js`
 - `content.js`
+- `bridge.html`
+- `bridge.js`
