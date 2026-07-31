@@ -1,10 +1,9 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.3.0";
-  var BUTTON_ID = "gear-chatgpt-tab-switch-button";
-  var MESSAGE_ID = "gear-chatgpt-tab-switch-message";
-  var DEBUG_KEY = "gear-chatgpt-tab-switch:last-plan:v030";
+  var VERSION = "0.3.1";
+  var BUTTON_ID = "gear-chatgpt-tab-query-button";
+  var PANEL_ID = "gear-chatgpt-tab-query-panel";
   var renderScheduled = false;
 
   function setImportant(style, property, value) {
@@ -21,73 +20,82 @@
     throw new Error("runtime.getURL is unavailable");
   }
 
-  function saveDebug(value) {
-    try {
-      localStorage.setItem(DEBUG_KEY, JSON.stringify(value));
-    } catch (error) {
-      // Continue without persistent diagnostics.
-    }
+  function removePanel() {
+    var existing = document.getElementById(PANEL_ID);
+    if (existing) existing.remove();
   }
 
-  function readDebug() {
-    try {
-      var value = JSON.parse(localStorage.getItem(DEBUG_KEY) || "null");
-      if (!value || typeof value.timestamp !== "number") return null;
-      if (Date.now() - value.timestamp > 20000) return null;
-      return value;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function clearDebug() {
-    try {
-      localStorage.removeItem(DEBUG_KEY);
-    } catch (error) {
-      // Ignore.
-    }
-  }
-
-  function showMessage(text, isError, duration) {
+  function showPanel(text, isError) {
     if (!document.body) return;
+    removePanel();
 
-    var message = document.getElementById(MESSAGE_ID);
-    if (!message) {
-      message = document.createElement("div");
-      message.id = MESSAGE_ID;
-      document.body.appendChild(message);
-    }
+    var panel = document.createElement("div");
+    panel.id = PANEL_ID;
 
-    message.textContent = text;
-    var style = message.style;
+    var close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "診断表示を閉じる");
+    close.onclick = removePanel;
+
+    var title = document.createElement("div");
+    title.textContent = "Gear Tabs 診断 v" + VERSION;
+
+    var body = document.createElement("pre");
+    body.textContent = text;
+
+    panel.appendChild(close);
+    panel.appendChild(title);
+    panel.appendChild(body);
+    document.body.appendChild(panel);
+
+    var style = panel.style;
     setImportant(style, "position", "fixed");
-    setImportant(style, "right", "16px");
-    setImportant(style, "bottom", "168px");
+    setImportant(style, "left", "12px");
+    setImportant(style, "right", "12px");
+    setImportant(style, "bottom", "174px");
     setImportant(style, "z-index", "2147483647");
-    setImportant(style, "max-width", "calc(100vw - 32px)");
-    setImportant(style, "padding", "9px 12px");
-    setImportant(style, "border-radius", "10px");
-    setImportant(style, "background", isError ? "#7f1d1d" : "#202024");
+    setImportant(style, "box-sizing", "border-box");
+    setImportant(style, "max-height", "48vh");
+    setImportant(style, "overflow", "auto");
+    setImportant(style, "padding", "12px 42px 12px 12px");
+    setImportant(style, "border", "1px solid rgba(255,255,255,0.3)");
+    setImportant(style, "border-radius", "12px");
+    setImportant(style, "background", isError ? "#7f1d1d" : "#18181b");
     setImportant(style, "color", "#ffffff");
-    setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.45)");
+    setImportant(style, "box-shadow", "0 8px 28px rgba(0,0,0,0.55)");
     setImportant(style, "font", "600 12px/1.45 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
     setImportant(style, "opacity", "1");
     setImportant(style, "visibility", "visible");
 
-    window.clearTimeout(showMessage.timer);
-    showMessage.timer = window.setTimeout(function () {
-      if (message && message.parentNode) message.remove();
-    }, duration || 6500);
+    setImportant(close.style, "position", "absolute");
+    setImportant(close.style, "top", "6px");
+    setImportant(close.style, "right", "8px");
+    setImportant(close.style, "width", "30px");
+    setImportant(close.style, "height", "30px");
+    setImportant(close.style, "border", "0");
+    setImportant(close.style, "background", "transparent");
+    setImportant(close.style, "color", "#ffffff");
+    setImportant(close.style, "font", "700 24px/1 sans-serif");
+
+    setImportant(title.style, "margin", "0 0 8px");
+    setImportant(title.style, "font-weight", "800");
+
+    setImportant(body.style, "margin", "0");
+    setImportant(body.style, "white-space", "pre-wrap");
+    setImportant(body.style, "overflow-wrap", "anywhere");
+    setImportant(body.style, "font", "600 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace");
+    setImportant(body.style, "color", "#ffffff");
   }
 
-  function requestTabSwitch() {
+  function inspectTabs() {
     return new Promise(function (resolve, reject) {
       if (!document.body) {
         reject(new Error("document.body is unavailable"));
         return;
       }
 
-      var requestId = "switch-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+      var requestId = "inspect-" + Date.now() + "-" + Math.random().toString(36).slice(2);
       var frame = document.createElement("iframe");
       var settled = false;
       var timeoutId = 0;
@@ -109,20 +117,9 @@
       function onMessage(event) {
         var data = event.data;
         if (event.source !== frame.contentWindow) return;
-        if (!data || data.source !== "gear-chatgpt-tab-switch-bridge") return;
-        if (data.requestId !== requestId) return;
-
-        if (data.type === "plan") {
-          var plan = data.payload || {};
-          var text = "v" + VERSION + " 診断: " + plan.source + " → " + plan.target + "（" + plan.candidateCount + "枚）";
-          saveDebug({ timestamp: Date.now(), phase: "plan", text: text });
-          showMessage(text, false, 9000);
-          return;
-        }
-
-        if (data.type === "result") {
-          finish(null, data.payload);
-        }
+        if (!data || data.source !== "gear-chatgpt-tab-query-bridge") return;
+        if (data.type !== "result" || data.requestId !== requestId) return;
+        finish(null, data.payload);
       }
 
       window.addEventListener("message", onMessage);
@@ -143,11 +140,9 @@
         try {
           frame.contentWindow.postMessage(
             {
-              source: "gear-chatgpt-tab-switch-content",
-              type: "switch-next-chatgpt-tab",
-              requestId: requestId,
-              currentUrl: location.href,
-              currentTitle: document.title
+              source: "gear-chatgpt-tab-query-content",
+              type: "inspect-tabs",
+              requestId: requestId
             },
             "*"
           );
@@ -168,22 +163,27 @@
     });
   }
 
-  async function switchTab(button) {
+  async function runDiagnostic(button) {
     button.disabled = true;
     ensureButton();
-    clearDebug();
 
     try {
-      var result = await requestTabSwitch();
+      var result = await inspectTabs();
       if (!result || !result.ok) {
-        showMessage(result && result.message ? result.message : "v" + VERSION + ": タブを切り替えられませんでした。", true, 9000);
+        showPanel(result && result.message ? result.message : "タブ情報を取得できませんでした。", true);
         return;
       }
 
-      saveDebug({ timestamp: Date.now(), phase: "result", text: result.message || "切替要求を送信しました" });
-      showMessage(result.message || "切替要求を送信しました", false, 9000);
+      var lines = [
+        "total=" + result.totalCount + " chatgpt=" + result.chatgptCount,
+        "",
+        result.tabs.length ? result.tabs.join("\n") : "ChatGPTタブは検出されませんでした。",
+        "",
+        "※この版は切替・再読み込みを行いません。"
+      ];
+      showPanel(lines.join("\n"), false);
     } catch (error) {
-      showMessage("v" + VERSION + ": タブ切替に失敗しました: " + String(error && error.message || error), true, 9000);
+      showPanel("診断に失敗しました: " + String(error && error.message || error), true);
     } finally {
       button.disabled = false;
       ensureButton();
@@ -198,18 +198,18 @@
       button = document.createElement("button");
       button.id = BUTTON_ID;
       button.type = "button";
-      button.textContent = "⇄";
+      button.textContent = "?";
       document.body.appendChild(button);
     } else if (button.parentElement !== document.body) {
       document.body.appendChild(button);
     }
 
-    button.setAttribute("aria-label", "次のChatGPTタブへ切り替える v" + VERSION);
-    button.setAttribute("title", "次のChatGPTタブへ切り替える v" + VERSION);
+    button.setAttribute("aria-label", "Gearのタブ一覧を診断する v" + VERSION);
+    button.setAttribute("title", "Gearのタブ一覧を診断する v" + VERSION);
     button.hidden = false;
     button.removeAttribute("aria-hidden");
     button.onclick = function () {
-      switchTab(button);
+      runDiagnostic(button);
     };
 
     var style = button.style;
@@ -232,7 +232,7 @@
     setImportant(style, "padding", "0");
     setImportant(style, "border", "1.5px solid rgba(255,255,255,0.82)");
     setImportant(style, "border-radius", "999px");
-    setImportant(style, "background", "#312e81");
+    setImportant(style, "background", "#92400e");
     setImportant(style, "color", "#ffffff");
     setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.48)");
     setImportant(style, "font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
@@ -259,12 +259,6 @@
   }
 
   ensureButton();
-
-  var recentDebug = readDebug();
-  if (recentDebug && recentDebug.phase === "plan") {
-    showMessage(recentDebug.text + "。現在タブが再読込された可能性があります。", true, 12000);
-  }
-
   new MutationObserver(scheduleRender).observe(document.documentElement, {
     childList: true,
     subtree: true
