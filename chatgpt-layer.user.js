@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.9.0
-// @description  Merge global, project, and chat layers, apply themes, and render layer-specific actions.
+// @version      0.10.0
+// @description  Merge global, project, and chat layers, apply JSON themes, style the composer, and render layer actions.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -23,9 +23,10 @@
   var RELOAD_BUTTON_ID = LAYER_ID + "-reload";
   var ACTION_BUTTON_PREFIX = LAYER_ID + "-action-";
   var ACTION_ATTRIBUTE = "data-chatgpt-layer-action-id";
+  var COMPOSER_SURFACE_ATTRIBUTE = "data-chatgpt-layer-composer-surface";
   var TOAST_ID = LAYER_ID + "-toast";
   var THEME_STYLE_ID = LAYER_ID + "-theme-style";
-  var CACHE_KEY = LAYER_ID + ":last-good-config:v7";
+  var CACHE_KEY = LAYER_ID + ":last-good-config:v8";
   var LAYER_ATTRIBUTE = "data-chatgpt-layer";
   var LAYERS_ATTRIBUTE = "data-chatgpt-layers";
   var PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
@@ -39,7 +40,7 @@
   ];
 
   var DEFAULT_CONFIG = {
-    version: "builtin-0.9.0",
+    version: "builtin-0.10.0",
     global: {},
     projects: {},
     chats: {},
@@ -80,6 +81,11 @@
     "--cgl-surface-alt-bg",
     "--cgl-sidebar-bg",
     "--cgl-composer-bg",
+    "--cgl-composer-background-image",
+    "--cgl-composer-background-size",
+    "--cgl-composer-background-position",
+    "--cgl-composer-background-blend",
+    "--cgl-composer-box-shadow",
     "--cgl-text",
     "--cgl-muted-text",
     "--cgl-border",
@@ -365,19 +371,164 @@
     return Math.min(maximum, Math.max(minimum, number));
   }
 
+  function normalizeGradient(value, composerBackground) {
+    if (!isRecord(value) || value.enabled === false) return null;
+    return {
+      angle: clampNumber(value.angle, 180, -360, 360),
+      from: normalizeColor(value.from, composerBackground),
+      to: normalizeColor(value.to, composerBackground)
+    };
+  }
+
+  function normalizeComposerShadow(value) {
+    if (!isRecord(value) || value.enabled === false) return null;
+    return {
+      color: normalizeColor(value.color, "rgba(0,0,0,0.42)"),
+      x: clampNumber(value.x, 0, -40, 40),
+      y: clampNumber(value.y, 10, -40, 40),
+      blur: clampNumber(value.blur, 24, 0, 80),
+      spread: clampNumber(value.spread, -8, -40, 40)
+    };
+  }
+
+  function normalizeComposerHighlight(value) {
+    if (!isRecord(value) || value.enabled === false) return null;
+    return {
+      color: normalizeColor(value.color, "rgba(255,255,255,0.12)"),
+      size: clampNumber(value.size, 1, 0, 4)
+    };
+  }
+
+  function normalizeComposerTexture(value) {
+    if (!isRecord(value) || value.enabled === false) return null;
+
+    var type = typeof value.type === "string" ? value.type : "grain";
+    if (["grain", "linen", "wood"].indexOf(type) < 0) type = "grain";
+
+    var blendMode = typeof value.blendMode === "string" ? value.blendMode : "soft-light";
+    if (["normal", "soft-light", "overlay", "multiply", "screen"].indexOf(blendMode) < 0) {
+      blendMode = "soft-light";
+    }
+
+    return {
+      type: type,
+      color: normalizeColor(value.color, "rgba(255,255,255,0.035)"),
+      size: clampNumber(value.size, 6, 2, 32),
+      blendMode: blendMode
+    };
+  }
+
+  function normalizeComposerStyle(value, composerBackground) {
+    if (!isRecord(value) || value.enabled === false) return null;
+
+    return {
+      gradient: normalizeGradient(value.gradient, composerBackground),
+      shadow: normalizeComposerShadow(value.shadow),
+      highlight: normalizeComposerHighlight(value.highlight),
+      texture: normalizeComposerTexture(value.texture)
+    };
+  }
+
   function normalizeTheme(value) {
     if (!isRecord(value) || value.enabled === false) return null;
+
+    var composerBackground = normalizeColor(value.composerBackground, DEFAULT_THEME.composerBackground);
 
     return {
       pageBackground: normalizeColor(value.pageBackground, DEFAULT_THEME.pageBackground),
       surfaceBackground: normalizeColor(value.surfaceBackground, DEFAULT_THEME.surfaceBackground),
       surfaceAltBackground: normalizeColor(value.surfaceAltBackground, DEFAULT_THEME.surfaceAltBackground),
       sidebarBackground: normalizeColor(value.sidebarBackground, DEFAULT_THEME.sidebarBackground),
-      composerBackground: normalizeColor(value.composerBackground, DEFAULT_THEME.composerBackground),
+      composerBackground: composerBackground,
+      composerStyle: normalizeComposerStyle(value.composerStyle, composerBackground),
       textColor: normalizeColor(value.textColor, DEFAULT_THEME.textColor),
       mutedTextColor: normalizeColor(value.mutedTextColor, DEFAULT_THEME.mutedTextColor),
       borderColor: normalizeColor(value.borderColor, DEFAULT_THEME.borderColor),
       accentColor: normalizeColor(value.accentColor, DEFAULT_THEME.accentColor)
+    };
+  }
+
+  function buildTextureLayers(texture) {
+    if (!texture) return [];
+
+    var color = texture.color;
+    var size = texture.size;
+    var layers = [];
+
+    if (texture.type === "grain") {
+      layers.push({
+        image: "radial-gradient(circle, " + color + " 0, " + color + " 0.6px, transparent 0.8px)",
+        size: size + "px " + size + "px",
+        position: "0 0",
+        blend: texture.blendMode
+      });
+    } else if (texture.type === "linen") {
+      layers.push({
+        image: "repeating-linear-gradient(0deg, " + color + " 0, " + color + " 1px, transparent 1px, transparent " + size + "px)",
+        size: "auto",
+        position: "0 0",
+        blend: texture.blendMode
+      });
+      layers.push({
+        image: "repeating-linear-gradient(90deg, " + color + " 0, " + color + " 1px, transparent 1px, transparent " + size + "px)",
+        size: "auto",
+        position: "0 0",
+        blend: texture.blendMode
+      });
+    } else if (texture.type === "wood") {
+      layers.push({
+        image: "repeating-linear-gradient(92deg, " + color + " 0, " + color + " 1px, transparent 1px, transparent " + size + "px)",
+        size: "auto",
+        position: "0 0",
+        blend: texture.blendMode
+      });
+    }
+
+    return layers;
+  }
+
+  function buildComposerVisual(style) {
+    if (!style) {
+      return {
+        image: "none",
+        size: "auto",
+        position: "0 0",
+        blend: "normal",
+        boxShadow: "none"
+      };
+    }
+
+    var layers = buildTextureLayers(style.texture);
+
+    if (style.gradient) {
+      layers.push({
+        image: "linear-gradient(" + style.gradient.angle + "deg, " + style.gradient.from + ", " + style.gradient.to + ")",
+        size: "auto",
+        position: "0 0",
+        blend: "normal"
+      });
+    }
+
+    var shadows = [];
+    if (style.shadow) {
+      shadows.push(
+        style.shadow.x + "px " +
+        style.shadow.y + "px " +
+        style.shadow.blur + "px " +
+        style.shadow.spread + "px " +
+        style.shadow.color
+      );
+    }
+    if (style.highlight && style.highlight.size > 0) {
+      shadows.push("inset 0 " + style.highlight.size + "px 0 0 " + style.highlight.color);
+    }
+
+    return {
+      image: layers.length ? layers.map(function (layer) { return layer.image; }).join(", ") : "none",
+      size: layers.length ? layers.map(function (layer) { return layer.size; }).join(", ") : "auto",
+      position: layers.length ? layers.map(function (layer) { return layer.position; }).join(", ") : "0 0",
+      blend: layers.length ? layers.map(function (layer) { return layer.blend; }).join(", ") : "normal",
+      boxShadow: shadows.length ? shadows.join(", ") : "none"
     };
   }
 
@@ -401,6 +552,15 @@
       'background-color:var(--cgl-surface-bg)!important;}' +
       'html[' + THEME_ATTRIBUTE + '="on"] [class*="bg-token-composer-surface-primary"], html[' + THEME_ATTRIBUTE + '="on"] form:has(#prompt-textarea), html[' + THEME_ATTRIBUTE + '="on"] div:has(> #prompt-textarea), html[' + THEME_ATTRIBUTE + '="on"] div:has(> div > #prompt-textarea) {' +
       'background-color:var(--cgl-composer-bg)!important;border-color:var(--cgl-border)!important;}' +
+      'html[' + THEME_ATTRIBUTE + '="on"] [' + COMPOSER_SURFACE_ATTRIBUTE + '="on"] {' +
+      'background-color:var(--cgl-composer-bg)!important;' +
+      'background-image:var(--cgl-composer-background-image)!important;' +
+      'background-size:var(--cgl-composer-background-size)!important;' +
+      'background-position:var(--cgl-composer-background-position)!important;' +
+      'background-blend-mode:var(--cgl-composer-background-blend)!important;' +
+      'background-clip:padding-box!important;' +
+      'box-shadow:var(--cgl-composer-box-shadow)!important;' +
+      'border-color:var(--cgl-border)!important;}' +
       'html[' + THEME_ATTRIBUTE + '="on"] #prompt-textarea {' +
       'color:var(--cgl-text)!important;caret-color:var(--cgl-accent)!important;}' +
       'html[' + THEME_ATTRIBUTE + '="on"] #prompt-textarea::placeholder {' +
@@ -411,11 +571,88 @@
     document.head.appendChild(style);
   }
 
+  function findEditor() {
+    return document.querySelector(
+      '#prompt-textarea, textarea[data-id="root"], form textarea, form [contenteditable="true"]'
+    );
+  }
+
+  function parseRadius(value) {
+    var number = parseFloat(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function findComposerSurface() {
+    var editor = findEditor();
+    if (!editor) return null;
+
+    var explicit = editor.closest(
+      '[data-type="unified-composer"], [data-testid="composer"], [data-testid="composer-surface"]'
+    );
+    if (explicit) return explicit;
+
+    var form = editor.closest("form");
+    var editorRect = editor.getBoundingClientRect();
+    var element = editor.parentElement;
+
+    while (element && element !== document.body) {
+      if (element instanceof HTMLElement) {
+        var rect = element.getBoundingClientRect();
+        var computed = getComputedStyle(element);
+        var radius = Math.max(
+          parseRadius(computed.borderTopLeftRadius),
+          parseRadius(computed.borderTopRightRadius),
+          parseRadius(computed.borderBottomLeftRadius),
+          parseRadius(computed.borderBottomRightRadius)
+        );
+
+        if (
+          radius >= 10 &&
+          rect.width >= Math.max(220, editorRect.width) &&
+          rect.height >= editorRect.height &&
+          rect.height <= 320
+        ) {
+          return element;
+        }
+      }
+
+      if (element === form) break;
+      element = element.parentElement;
+    }
+
+    return form || editor.parentElement;
+  }
+
+  function clearComposerSurface() {
+    document.querySelectorAll("[" + COMPOSER_SURFACE_ATTRIBUTE + "]").forEach(function (element) {
+      element.removeAttribute(COMPOSER_SURFACE_ATTRIBUTE);
+    });
+  }
+
+  function applyComposerSurface(composerStyle) {
+    var current = composerStyle ? findComposerSurface() : null;
+
+    document.querySelectorAll("[" + COMPOSER_SURFACE_ATTRIBUTE + "]").forEach(function (element) {
+      if (element !== current) element.removeAttribute(COMPOSER_SURFACE_ATTRIBUTE);
+    });
+
+    if (current && current.getAttribute(COMPOSER_SURFACE_ATTRIBUTE) !== "on") {
+      current.setAttribute(COMPOSER_SURFACE_ATTRIBUTE, "on");
+    }
+  }
+
   function clearTheme(root) {
     root.removeAttribute(THEME_ATTRIBUTE);
+    clearComposerSurface();
     OWN_THEME_PROPERTIES.concat(CHATGPT_THEME_PROPERTIES).forEach(function (property) {
       root.style.removeProperty(property);
     });
+  }
+
+  function setRootVariable(root, property, value) {
+    if (root.style.getPropertyValue(property) !== String(value)) {
+      root.style.setProperty(property, value, "important");
+    }
   }
 
   function applyTheme(value) {
@@ -429,14 +666,20 @@
     }
 
     ensureThemeStyle();
-    root.setAttribute(THEME_ATTRIBUTE, "on");
+    if (root.getAttribute(THEME_ATTRIBUTE) !== "on") root.setAttribute(THEME_ATTRIBUTE, "on");
 
+    var composerVisual = buildComposerVisual(theme.composerStyle);
     var variables = {
       "--cgl-page-bg": theme.pageBackground,
       "--cgl-surface-bg": theme.surfaceBackground,
       "--cgl-surface-alt-bg": theme.surfaceAltBackground,
       "--cgl-sidebar-bg": theme.sidebarBackground,
       "--cgl-composer-bg": theme.composerBackground,
+      "--cgl-composer-background-image": composerVisual.image,
+      "--cgl-composer-background-size": composerVisual.size,
+      "--cgl-composer-background-position": composerVisual.position,
+      "--cgl-composer-background-blend": composerVisual.blend,
+      "--cgl-composer-box-shadow": composerVisual.boxShadow,
       "--cgl-text": theme.textColor,
       "--cgl-muted-text": theme.mutedTextColor,
       "--cgl-border": theme.borderColor,
@@ -456,8 +699,10 @@
     };
 
     Object.keys(variables).forEach(function (property) {
-      root.style.setProperty(property, variables[property], "important");
+      setRootVariable(root, property, variables[property]);
     });
+
+    applyComposerSurface(theme.composerStyle);
   }
 
   function findScrollContainer() {
@@ -467,7 +712,7 @@
     var lastTurn = turns.length ? turns[turns.length - 1] : null;
     var anchors = [
       lastTurn,
-      document.querySelector("#prompt-textarea"),
+      findEditor(),
       document.querySelector("main"),
       document.querySelector('[role="main"]')
     ];
@@ -517,12 +762,6 @@
     performScrollToBottom();
     requestAnimationFrame(performScrollToBottom);
     window.setTimeout(performScrollToBottom, 120);
-  }
-
-  function findEditor() {
-    return document.querySelector(
-      '#prompt-textarea, textarea[data-id="root"], form textarea, form [contenteditable="true"]'
-    );
   }
 
   function getEditorText(editor) {
@@ -840,19 +1079,23 @@
     removeStaleLayerButtons(activeIds);
   }
 
+  function setAttributeIfChanged(element, name, value) {
+    if (value === null || value === undefined || value === "") {
+      if (element.hasAttribute(name)) element.removeAttribute(name);
+      return;
+    }
+    if (element.getAttribute(name) !== String(value)) element.setAttribute(name, String(value));
+  }
+
   function applyContext(context) {
     var root = document.documentElement;
     if (!root) return;
 
-    root.setAttribute(LAYER_ATTRIBUTE, context.layerName);
-    root.setAttribute(LAYERS_ATTRIBUTE, context.layerNames.join(" "));
-    root.setAttribute(VERSION_ATTRIBUTE, context.configVersion);
-
-    if (context.projectId) root.setAttribute(PROJECT_ATTRIBUTE, context.projectId);
-    else root.removeAttribute(PROJECT_ATTRIBUTE);
-
-    if (context.chatId) root.setAttribute(CHAT_ATTRIBUTE, context.chatId);
-    else root.removeAttribute(CHAT_ATTRIBUTE);
+    setAttributeIfChanged(root, LAYER_ATTRIBUTE, context.layerName);
+    setAttributeIfChanged(root, LAYERS_ATTRIBUTE, context.layerNames.join(" "));
+    setAttributeIfChanged(root, VERSION_ATTRIBUTE, context.configVersion);
+    setAttributeIfChanged(root, PROJECT_ATTRIBUTE, context.projectId);
+    setAttributeIfChanged(root, CHAT_ATTRIBUTE, context.chatId);
 
     applyTheme(context.settings.theme);
     ensureSharedButtons();
