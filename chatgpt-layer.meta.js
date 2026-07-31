@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.9.0
-// @description  Merge global, project, and chat layers, apply themes, and render layer-specific actions.
+// @version      0.10.0
+// @description  Merge global, project, and chat layers, apply JSON themes, style the composer, and render layer actions.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
