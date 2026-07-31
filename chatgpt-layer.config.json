@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-30.4",
+  "version": "2026-08-01.1",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -26,7 +26,25 @@
         "mutedTextColor": "#d7c1d2",
         "borderColor": "rgba(232, 188, 228, 0.28)",
         "accentColor": "#d7a8e8"
-      }
+      },
+      "actions": [
+        {
+          "id": "shiori",
+          "label": "栞",
+          "title": "入力欄へ「しおり」を入れる",
+          "type": "insertPrompt",
+          "text": "しおり",
+          "mode": "empty",
+          "order": 10,
+          "style": {
+            "background": "#6f3b75",
+            "color": "#ffffff",
+            "borderColor": "rgba(255,255,255,0.84)",
+            "size": 40,
+            "fontSize": 16
+          }
+        }
+      ]
     },
     "blank": {},
     "ui": {}
