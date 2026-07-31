@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Tab Switch Test for Gear v0.3.0",
-  "version": "0.3.0",
-  "description": "Tests switching to the next open ChatGPT tab in Gear Browser.",
+  "name": "ChatGPT Tab Query Diagnostic for Gear v0.3.1",
+  "version": "0.3.1",
+  "description": "Displays the tabs returned by Gear Browser without switching or reloading them.",
   "permissions": [
     "tabs"
   ],
