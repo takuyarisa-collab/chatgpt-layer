@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Layer Loader
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
-// @version      0.8.0
-// @description  Merge global, project, and chat layers, apply themes, and provide shared page controls.
+// @version      0.9.0
+// @description  Merge global, project, and chat layers, apply themes, and render layer-specific actions.
 // @author       TaC & Shion
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
@@ -21,8 +21,11 @@
   var LAYER_ID = "chatgpt-layer";
   var SCROLL_BUTTON_ID = LAYER_ID + "-scroll-bottom";
   var RELOAD_BUTTON_ID = LAYER_ID + "-reload";
+  var ACTION_BUTTON_PREFIX = LAYER_ID + "-action-";
+  var ACTION_ATTRIBUTE = "data-chatgpt-layer-action-id";
+  var TOAST_ID = LAYER_ID + "-toast";
   var THEME_STYLE_ID = LAYER_ID + "-theme-style";
-  var CACHE_KEY = LAYER_ID + ":last-good-config:v6";
+  var CACHE_KEY = LAYER_ID + ":last-good-config:v7";
   var LAYER_ATTRIBUTE = "data-chatgpt-layer";
   var LAYERS_ATTRIBUTE = "data-chatgpt-layers";
   var PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
@@ -36,7 +39,7 @@
   ];
 
   var DEFAULT_CONFIG = {
-    version: "builtin-0.8.0",
+    version: "builtin-0.9.0",
     global: {},
     projects: {},
     chats: {},
@@ -53,6 +56,22 @@
     mutedTextColor: "#bdb5ca",
     borderColor: "rgba(168, 139, 250, 0.18)",
     accentColor: "#9f82ff"
+  };
+
+  var DEFAULT_BUTTON_STYLE = {
+    size: 40,
+    fontSize: 18,
+    background: "#7c3aed",
+    color: "#ffffff",
+    borderColor: "rgba(255,255,255,0.82)"
+  };
+
+  var DEFAULT_LAYER_BUTTON_STYLE = {
+    size: 40,
+    fontSize: 16,
+    background: "#5f2f64",
+    color: "#ffffff",
+    borderColor: "rgba(255,255,255,0.82)"
   };
 
   var OWN_THEME_PROPERTIES = [
@@ -340,6 +359,12 @@
     return candidate;
   }
 
+  function clampNumber(value, fallback, minimum, maximum) {
+    var number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.min(maximum, Math.max(minimum, number));
+  }
+
   function normalizeTheme(value) {
     if (!isRecord(value) || value.enabled === false) return null;
 
@@ -494,14 +519,64 @@
     window.setTimeout(performScrollToBottom, 120);
   }
 
-  function getEditorText() {
-    var editor = document.querySelector(
+  function findEditor() {
+    return document.querySelector(
       '#prompt-textarea, textarea[data-id="root"], form textarea, form [contenteditable="true"]'
     );
+  }
 
-    if (!editor) return "";
-    if (typeof editor.value === "string") return editor.value.trim();
-    return String(editor.innerText || editor.textContent || "").trim();
+  function getEditorText(editor) {
+    var target = editor || findEditor();
+    if (!target) return "";
+    if (typeof target.value === "string") return target.value.trim();
+    return String(target.innerText || target.textContent || "").trim();
+  }
+
+  function setTextAreaValue(editor, text) {
+    var prototype = editor instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+    var descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+    if (descriptor && typeof descriptor.set === "function") descriptor.set.call(editor, text);
+    else editor.value = text;
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
+    editor.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function setContentEditableValue(editor, text) {
+    editor.focus();
+    var inserted = false;
+
+    try {
+      var selection = window.getSelection();
+      var range = document.createRange();
+      range.selectNodeContents(editor);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      if (typeof document.execCommand === "function") {
+        inserted = document.execCommand("insertText", false, text);
+      }
+    } catch (error) {
+      inserted = false;
+    }
+
+    if (!inserted) editor.textContent = text;
+
+    try {
+      editor.dispatchEvent(new InputEvent("input", {
+        bubbles: true,
+        inputType: "insertText",
+        data: text
+      }));
+    } catch (error) {
+      editor.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+
+  function setEditorText(editor, text) {
+    if (typeof editor.value === "string") setTextAreaValue(editor, text);
+    else setContentEditableValue(editor, text);
+    editor.focus();
   }
 
   function reloadPage() {
@@ -515,8 +590,108 @@
     style.setProperty(property, value, "important");
   }
 
-  function applyButtonStyle(button, right, fontSize) {
+  function showToast(text, isError) {
+    if (!document.body) return;
+
+    var toast = document.getElementById(TOAST_ID);
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = TOAST_ID;
+      document.body.appendChild(toast);
+    }
+
+    if (toast.textContent !== text) toast.textContent = text;
+    var style = toast.style;
+    setImportant(style, "position", "fixed");
+    setImportant(style, "right", "16px");
+    setImportant(style, "bottom", "168px");
+    setImportant(style, "z-index", "2147483647");
+    setImportant(style, "max-width", "calc(100vw - 32px)");
+    setImportant(style, "padding", "9px 12px");
+    setImportant(style, "border-radius", "10px");
+    setImportant(style, "background", isError ? "#7f1d1d" : "#202024");
+    setImportant(style, "color", "#ffffff");
+    setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.45)");
+    setImportant(style, "font", "600 12px/1.45 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
+    setImportant(style, "opacity", "1");
+    setImportant(style, "visibility", "visible");
+    setImportant(style, "pointer-events", "none");
+
+    window.clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(function () {
+      if (toast && toast.parentNode) toast.remove();
+    }, 3600);
+  }
+
+  function normalizeButtonStyle(value, fallback) {
+    var style = normalizeRecord(value);
+    return {
+      size: clampNumber(style.size, fallback.size, 32, 56),
+      fontSize: clampNumber(style.fontSize, fallback.fontSize, 10, 24),
+      background: normalizeColor(style.background, fallback.background),
+      color: normalizeColor(style.color, fallback.color),
+      borderColor: normalizeColor(style.borderColor, fallback.borderColor)
+    };
+  }
+
+  function normalizeAction(raw) {
+    if (!isRecord(raw)) return null;
+    if (typeof raw.id !== "string" || !/^[a-z0-9_-]{1,48}$/i.test(raw.id)) return null;
+    if (raw.enabled === false) return null;
+
+    var type = typeof raw.type === "string" ? raw.type : "";
+    if (["insertPrompt", "reload", "scrollToBottom"].indexOf(type) < 0) return null;
+
+    var label = typeof raw.label === "string" ? raw.label.trim().slice(0, 8) : "";
+    if (!label) return null;
+
+    var action = {
+      id: raw.id,
+      label: label,
+      title: typeof raw.title === "string" && raw.title.trim()
+        ? raw.title.trim().slice(0, 100)
+        : label,
+      type: type,
+      order: clampNumber(raw.order, 0, -1000, 1000),
+      style: normalizeButtonStyle(raw.style, DEFAULT_LAYER_BUTTON_STYLE)
+    };
+
+    if (type === "insertPrompt") {
+      if (typeof raw.text !== "string" || !raw.text.length) return null;
+      action.text = raw.text.slice(0, 4000);
+      action.mode = ["empty", "append", "replace"].indexOf(raw.mode) >= 0 ? raw.mode : "empty";
+      action.separator = typeof raw.separator === "string" ? raw.separator.slice(0, 20) : "\n";
+      action.confirmReplace = raw.confirmReplace !== false;
+    }
+
+    return action;
+  }
+
+  function normalizeActions(value) {
+    if (!Array.isArray(value)) return [];
+
+    var actions = [];
+    var seen = {};
+
+    value.forEach(function (raw) {
+      var action = normalizeAction(raw);
+      if (!action || seen[action.id]) return;
+      seen[action.id] = true;
+      actions.push(action);
+    });
+
+    actions.sort(function (left, right) {
+      if (left.order !== right.order) return left.order - right.order;
+      return left.id.localeCompare(right.id);
+    });
+
+    return actions.slice(0, 8);
+  }
+
+  function applyButtonStyle(button, right, visual) {
     var style = button.style;
+    var size = visual.size;
+
     setImportant(style, "position", "fixed");
     setImportant(style, "top", "auto");
     setImportant(style, "left", "auto");
@@ -526,27 +701,27 @@
     setImportant(style, "box-sizing", "border-box");
     setImportant(style, "display", "grid");
     setImportant(style, "place-items", "center");
-    setImportant(style, "width", "40px");
-    setImportant(style, "min-width", "40px");
-    setImportant(style, "max-width", "40px");
-    setImportant(style, "height", "40px");
-    setImportant(style, "min-height", "40px");
-    setImportant(style, "max-height", "40px");
+    setImportant(style, "width", size + "px");
+    setImportant(style, "min-width", size + "px");
+    setImportant(style, "max-width", size + "px");
+    setImportant(style, "height", size + "px");
+    setImportant(style, "min-height", size + "px");
+    setImportant(style, "max-height", size + "px");
     setImportant(style, "margin", "0");
     setImportant(style, "padding", "0");
-    setImportant(style, "border", "1.5px solid rgba(255,255,255,0.82)");
+    setImportant(style, "border", "1.5px solid " + visual.borderColor);
     setImportant(style, "border-radius", "999px");
-    setImportant(style, "background", "#7c3aed");
-    setImportant(style, "color", "#ffffff");
+    setImportant(style, "background", visual.background);
+    setImportant(style, "color", visual.color);
     setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.48)");
     setImportant(style, "font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
-    setImportant(style, "font-size", fontSize + "px");
+    setImportant(style, "font-size", visual.fontSize + "px");
     setImportant(style, "font-weight", "800");
     setImportant(style, "line-height", "1");
     setImportant(style, "text-align", "center");
-    setImportant(style, "opacity", "1");
+    setImportant(style, "opacity", button.disabled ? "0.55" : "1");
     setImportant(style, "visibility", "visible");
-    setImportant(style, "overflow", "visible");
+    setImportant(style, "overflow", "hidden");
     setImportant(style, "pointer-events", "auto");
     setImportant(style, "transform", "none");
     setImportant(style, "appearance", "none");
@@ -555,7 +730,7 @@
     setImportant(style, "-webkit-tap-highlight-color", "transparent");
   }
 
-  function ensureActionButton(id, label, ariaLabel, right, fontSize, onClick) {
+  function ensureActionButton(id, label, ariaLabel, right, visual, onClick) {
     if (!document.body) return null;
 
     var button = document.getElementById(id);
@@ -568,20 +743,101 @@
       document.body.appendChild(button);
     }
 
-    button.textContent = label;
+    if (button.textContent !== label) button.textContent = label;
     button.setAttribute("aria-label", ariaLabel);
     button.setAttribute("title", ariaLabel);
     button.hidden = false;
     button.disabled = false;
     button.removeAttribute("aria-hidden");
     button.onclick = onClick;
-    applyButtonStyle(button, right, fontSize);
+    applyButtonStyle(button, right, visual);
     return button;
   }
 
   function ensureSharedButtons() {
-    ensureActionButton(RELOAD_BUTTON_ID, "↻", "ページを再読み込みする", 64, 20, reloadPage);
-    ensureActionButton(SCROLL_BUTTON_ID, "↓", "一番下までスクロールする", 16, 21, scrollToBottom);
+    var reloadStyle = normalizeButtonStyle({ fontSize: 20 }, DEFAULT_BUTTON_STYLE);
+    var scrollStyle = normalizeButtonStyle({ fontSize: 21 }, DEFAULT_BUTTON_STYLE);
+
+    ensureActionButton(RELOAD_BUTTON_ID, "↻", "ページを再読み込みする", 64, reloadStyle, reloadPage);
+    ensureActionButton(SCROLL_BUTTON_ID, "↓", "一番下までスクロールする", 16, scrollStyle, scrollToBottom);
+  }
+
+  function runInsertPromptAction(action) {
+    var editor = findEditor();
+    if (!editor) {
+      showToast("入力欄が見つかりませんでした。", true);
+      return;
+    }
+
+    var existing = getEditorText(editor);
+    var nextText = action.text;
+
+    if (action.mode === "empty" && existing) {
+      showToast("入力中の文章があるため、挿入しませんでした。", true);
+      return;
+    }
+
+    if (action.mode === "append" && existing) {
+      nextText = existing + action.separator + action.text;
+    }
+
+    if (
+      action.mode === "replace" &&
+      existing &&
+      action.confirmReplace &&
+      !window.confirm("入力中の文章を置き換えますか？")
+    ) {
+      return;
+    }
+
+    setEditorText(editor, nextText);
+    showToast("入力欄へ「" + action.label + "」をセットしました。", false);
+  }
+
+  function runLayerAction(action) {
+    if (action.type === "insertPrompt") {
+      runInsertPromptAction(action);
+      return;
+    }
+    if (action.type === "reload") {
+      reloadPage();
+      return;
+    }
+    if (action.type === "scrollToBottom") {
+      scrollToBottom();
+      return;
+    }
+    showToast("未対応のアクションです。", true);
+  }
+
+  function removeStaleLayerButtons(activeIds) {
+    document.querySelectorAll("[" + ACTION_ATTRIBUTE + "]").forEach(function (button) {
+      var actionId = button.getAttribute(ACTION_ATTRIBUTE);
+      if (!activeIds[actionId]) button.remove();
+    });
+  }
+
+  function ensureLayerButtons(value) {
+    var actions = normalizeActions(value);
+    var activeIds = {};
+    var right = 112;
+
+    actions.forEach(function (action) {
+      activeIds[action.id] = true;
+      var buttonId = ACTION_BUTTON_PREFIX + action.id;
+      var button = ensureActionButton(
+        buttonId,
+        action.label,
+        action.title,
+        right,
+        action.style,
+        function () { runLayerAction(action); }
+      );
+      if (button) button.setAttribute(ACTION_ATTRIBUTE, action.id);
+      right += action.style.size + 8;
+    });
+
+    removeStaleLayerButtons(activeIds);
   }
 
   function applyContext(context) {
@@ -600,6 +856,7 @@
 
     applyTheme(context.settings.theme);
     ensureSharedButtons();
+    ensureLayerButtons(context.settings.actions);
 
     var contextKey =
       context.configVersion + ":" +
@@ -654,7 +911,8 @@
   }
 
   async function start() {
-    activeConfig = readCachedConfig() || DEFAULT_CONFIG;
+    var cachedConfig = readCachedConfig();
+    activeConfig = cachedConfig || DEFAULT_CONFIG;
     render();
     observeNavigation();
 
@@ -664,8 +922,10 @@
       render();
     } catch (error) {
       console.warn("[ChatGPT Layer] Remote config load failed.", error);
-      activeConfig = DEFAULT_CONFIG;
-      render();
+      if (!cachedConfig) {
+        activeConfig = DEFAULT_CONFIG;
+        render();
+      }
     }
   }
 
