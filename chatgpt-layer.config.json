@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01.1",
+  "version": "2026-08-01.2",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -19,13 +19,13 @@
         "enabled": true,
         "pageBackground": "#241126",
         "surfaceBackground": "#30172f",
-        "surfaceAltBackground": "#43203f",
+        "surfaceAltBackground": "#3f2a3e",
         "sidebarBackground": "#160c1a",
-        "composerBackground": "#39203b",
-        "textColor": "#fbf4fa",
-        "mutedTextColor": "#d7c1d2",
-        "borderColor": "rgba(232, 188, 228, 0.28)",
-        "accentColor": "#d7a8e8"
+        "composerBackground": "#4b3548",
+        "textColor": "#fff7fc",
+        "mutedTextColor": "#dcc8d7",
+        "borderColor": "rgba(239, 207, 231, 0.36)",
+        "accentColor": "#ddb1e9"
       },
       "actions": [
         {
@@ -37,9 +37,9 @@
           "mode": "empty",
           "order": 10,
           "style": {
-            "background": "#6f3b75",
-            "color": "#ffffff",
-            "borderColor": "rgba(255,255,255,0.84)",
+            "background": "#795078",
+            "color": "#fffafc",
+            "borderColor": "rgba(255,244,252,0.88)",
             "size": 40,
             "fontSize": 16
           }
