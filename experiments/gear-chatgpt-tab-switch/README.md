@@ -1,28 +1,43 @@
 # ChatGPT Tab Query Diagnostic for Gear
 
-Gear BrowserのWeb Extensionが返すタブ情報を、安全に確認する診断実験です。
+Gear BrowserのWeb Extensionで、ChatGPT画面内のボタンから既存タブを切り替えられるかを検証した実験です。
 
-## v0.3.1
+## 結論
 
-v0.3.0では `tabs.highlight` / `tabs.update` の呼び出し直後に現在タブが再読み込みされ、診断メッセージも表示されませんでした。
+現時点のGear Browserでは、ChatGPTページ内へ非表示の拡張機能ページ（`bridge.html`）をiframeとして読み込む方式は利用できません。
 
-v0.3.1では切替APIを一切呼びません。
+`bridge.html`を読み込んだ時点で、現在のChatGPTタブが再読み込みされます。
 
-- `tabs.query({})` だけを実行
-- 取得したChatGPTタブの `id / windowId / index / active / URL` を画面に表示
-- タブ切替、URL変更、再読み込みは行わない
+これはタブ切替APIの問題ではありません。v0.3.1では `tabs.highlight` と `tabs.update` を完全に外し、`tabs.query({})` だけにしても同じ再読み込みが発生しました。
 
-## インストール
+## 検証履歴
 
-1. Gearから旧実験版を削除
-2. `gear-chatgpt-tab-query-v0.3.1.crx` を新規インストール
-3. 拡張一覧で `ChatGPT Tab Query Diagnostic for Gear v0.3.1` を確認
-4. ChatGPTタブを再読み込み
+### v0.1.0
 
-## テスト
+- content scriptからBackground Service Workerへ `runtime.sendMessage()`
+- Gearで `Invalid call to runtime.sendMessage(). Tab not found.`
 
-1. 異なるChatGPT会話を2枚以上開く
-2. 右下の茶色い `?` ボタンを押す
-3. 表示された診断パネルをスクリーンショットする
+### v0.2.1
 
-この版で再読み込みが起きる場合、GearのWeb Extension実装が `tabs.query` 自体を正しく扱えていない可能性が高いです。
+- `runtime.sendMessage()`を廃止
+- ChatGPTページ内へ非表示の `bridge.html` を読み込み、拡張機能ページからTabs APIを実行
+- ボタンを押すと現在タブが再読み込み
+
+### v0.3.0
+
+- `tabs.update`ではなく`tabs.highlight`を優先
+- 結果は変わらず、現在タブが再読み込み
+
+### v0.3.1
+
+- タブ切替処理を完全に停止
+- `tabs.query({})`だけを実行する診断版
+- パネル表示前に現在タブが即再読み込み
+
+## 判断
+
+ChatGPTページ内の固定ボタンから、Bridgeまたはruntimeメッセージ経由で既存タブを切り替える方式は中止します。
+
+次に試す価値があるのは、ChatGPTページ内ボタンではなく、Gear側のWeb Extensionアクション／ポップアップからTabs APIを実行する方式です。
+
+UserScriptで可能なのは、指定URLを新しいタブで開くところまでです。既存タブの取得・選択には利用できません。
