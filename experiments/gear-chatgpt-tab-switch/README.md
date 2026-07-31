@@ -1,58 +1,28 @@
-# ChatGPT Tab Switch Test for Gear
+# ChatGPT Tab Query Diagnostic for Gear
 
-Gear BrowserのWeb Extensionで、既存タブの取得とアクティブ化が可能かを確認する最小実験です。
+Gear BrowserのWeb Extensionが返すタブ情報を、安全に確認する診断実験です。
 
-## 動作
+## v0.3.1
 
-ChatGPT画面の右下に `⇄` ボタンを追加します。
+v0.3.0では `tabs.highlight` / `tabs.update` の呼び出し直後に現在タブが再読み込みされ、診断メッセージも表示されませんでした。
 
-- 開いているChatGPTタブを取得
-- 現在のChatGPTタブの次にあるChatGPTタブを前面化
-- 最後のChatGPTタブでは先頭へ戻る
-- 失敗時はChatGPT画面上に理由を表示
+v0.3.1では切替APIを一切呼びません。
 
-既存のChatGPT Layerと併用すると、右下は次の並びになります。
-
-```text
-⇄  ↻  ↓
-```
-
-## v0.3.0
-
-v0.2.1でGearが `tabs.update(tabId, { active: true })` を正しく切り替えず、現在タブを再読み込みする挙動が見られたため、次の変更を行いました。
-
-- タブIDを重複除去
-- ChatGPTページの現在URLを明示して元タブを判定
-- `tabs.highlight` を優先してタブ位置で切り替え
-- `tabs.highlight` が使えない場合のみ `tabs.update` へフォールバック
-- 切替前の元タブID、対象タブID、index、チャットID先頭を診断表示
-- 現在タブが再読み込みされた場合も診断を20秒間保持
+- `tabs.query({})` だけを実行
+- 取得したChatGPTタブの `id / windowId / index / active / URL` を画面に表示
+- タブ切替、URL変更、再読み込みは行わない
 
 ## インストール
 
-Gear Browserの「拡張機能をインストール」から `.crx` を選択します。
+1. Gearから旧実験版を削除
+2. `gear-chatgpt-tab-query-v0.3.1.crx` を新規インストール
+3. 拡張一覧で `ChatGPT Tab Query Diagnostic for Gear v0.3.1` を確認
+4. ChatGPTタブを再読み込み
 
-旧版を削除してから、バージョン入りの新しいCRXを入れ直します。インストール後、拡張一覧で名前とVersionが `v0.3.0` になっていることを確認し、開いているChatGPTタブをすべて再読み込みします。
+## テスト
 
-## テスト方法
+1. 異なるChatGPT会話を2枚以上開く
+2. 右下の茶色い `?` ボタンを押す
+3. 表示された診断パネルをスクリーンショットする
 
-1. Gear Browserで異なるChatGPT会話を2枚以上開く
-2. どちらかのChatGPTタブで `⇄` を押す
-3. 画面に表示される `元タブ → 対象タブ` の診断を確認
-4. 次のChatGPTタブが前面になれば成功
-
-再読み込みになった場合は、再読み込み後に表示される診断文を記録します。
-
-## 権限
-
-- `tabs`：開いているタブの一覧取得と対象タブの前面化
-- ホスト権限は `chatgpt.com` と `chat.openai.com` のみ
-
-外部通信、解析、データ保存は行いません。診断情報はChatGPTドメインのlocalStorageへ最大20秒だけ保持します。
-
-## 収録ファイル
-
-- `manifest.json`
-- `content.js`
-- `bridge.html`
-- `bridge.js`
+この版で再読み込みが起きる場合、GearのWeb Extension実装が `tabs.query` 自体を正しく扱えていない可能性が高いです。
