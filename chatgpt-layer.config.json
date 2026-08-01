@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01.3",
+  "version": "2026-08-01.4",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -21,39 +21,39 @@
         "surfaceBackground": "#30172f",
         "surfaceAltBackground": "#3f2a3e",
         "sidebarBackground": "#160c1a",
-        "composerBackground": "#4b3548",
+        "composerBackground": "#473744",
         "composerStyle": {
           "enabled": true,
           "gradient": {
             "enabled": true,
             "angle": 180,
-            "from": "#5a4255",
-            "to": "#382536"
+            "from": "#51404e",
+            "to": "#40313e"
           },
           "shadow": {
             "enabled": true,
-            "color": "rgba(7, 3, 9, 0.58)",
+            "color": "rgba(8, 4, 10, 0.40)",
             "x": 0,
-            "y": 14,
-            "blur": 30,
-            "spread": -9
+            "y": 10,
+            "blur": 34,
+            "spread": -12
           },
           "highlight": {
             "enabled": true,
-            "color": "rgba(255, 244, 251, 0.17)",
+            "color": "rgba(255, 246, 252, 0.10)",
             "size": 1
           },
           "texture": {
             "enabled": true,
-            "type": "grain",
-            "color": "rgba(255, 244, 252, 0.045)",
-            "size": 5,
+            "type": "linen",
+            "color": "rgba(255, 246, 252, 0.028)",
+            "size": 7,
             "blendMode": "soft-light"
           }
         },
         "textColor": "#fff7fc",
         "mutedTextColor": "#dcc8d7",
-        "borderColor": "rgba(239, 207, 231, 0.36)",
+        "borderColor": "rgba(239, 207, 231, 0.30)",
         "accentColor": "#ddb1e9"
       },
       "actions": [
@@ -66,9 +66,9 @@
           "mode": "empty",
           "order": 10,
           "style": {
-            "background": "#795078",
+            "background": "#755574",
             "color": "#fffafc",
-            "borderColor": "rgba(255,244,252,0.88)",
+            "borderColor": "rgba(255,244,252,0.78)",
             "size": 40,
             "fontSize": 16
           }
