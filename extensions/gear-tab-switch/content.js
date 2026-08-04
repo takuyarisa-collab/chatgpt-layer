@@ -1,11 +1,13 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.5.0";
+  var api = globalThis.browser || globalThis.chrome;
+  var VERSION = api && api.runtime && api.runtime.getManifest
+    ? api.runtime.getManifest().version
+    : "unknown";
   var BUTTON_ID = "chatgpt-layer-tab-switch";
   var TOAST_ID = "chatgpt-layer-tab-switch-toast";
   var renderScheduled = false;
-  var api = globalThis.browser || globalThis.chrome;
 
   function setImportant(style, property, value) {
     style.setProperty(property, value, "important");
@@ -74,12 +76,11 @@
       var result = await sendSwitchMessage();
       if (!result || !result.ok) {
         showToast(result && result.message ? result.message : "タブ切り替えに失敗しました。", true);
-        return;
+      } else {
+        setTimeout(function () {
+          if (!document.hidden) showToast("切り替え要求を送信しました。", false);
+        }, 300);
       }
-
-      setTimeout(function () {
-        if (!document.hidden) showToast("切り替え要求を送信しました。", false);
-      }, 300);
     } catch (error) {
       showToast("切り替え失敗: " + String(error && error.message || error), true);
     } finally {
@@ -109,40 +110,46 @@
     button.onclick = function () { switchTab(button); };
 
     var style = button.style;
-    setImportant(style, "position", "fixed");
-    setImportant(style, "top", "auto");
-    setImportant(style, "left", "16px");
-    setImportant(style, "right", "auto");
-    setImportant(style, "bottom", "120px");
-    setImportant(style, "z-index", "2147483647");
-    setImportant(style, "box-sizing", "border-box");
-    setImportant(style, "display", "grid");
-    setImportant(style, "place-items", "center");
-    setImportant(style, "width", "40px");
-    setImportant(style, "min-width", "40px");
-    setImportant(style, "max-width", "40px");
-    setImportant(style, "height", "40px");
-    setImportant(style, "min-height", "40px");
-    setImportant(style, "max-height", "40px");
-    setImportant(style, "margin", "0");
-    setImportant(style, "padding", "0");
-    setImportant(style, "border", "1.5px solid rgba(255,255,255,0.82)");
-    setImportant(style, "border-radius", "999px");
-    setImportant(style, "background", "#0f766e");
-    setImportant(style, "color", "#ffffff");
-    setImportant(style, "box-shadow", "0 4px 16px rgba(0,0,0,0.48)");
-    setImportant(style, "font-family", "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif");
-    setImportant(style, "font-size", "20px");
-    setImportant(style, "font-weight", "800");
-    setImportant(style, "line-height", "1");
-    setImportant(style, "text-align", "center");
-    setImportant(style, "opacity", button.disabled ? "0.55" : "1");
-    setImportant(style, "visibility", "visible");
-    setImportant(style, "pointer-events", "auto");
-    setImportant(style, "appearance", "none");
-    setImportant(style, "-webkit-appearance", "none");
-    setImportant(style, "touch-action", "manipulation");
-    setImportant(style, "-webkit-tap-highlight-color", "transparent");
+    var values = {
+      position: "fixed",
+      top: "auto",
+      left: "16px",
+      right: "auto",
+      bottom: "120px",
+      "z-index": "2147483647",
+      "box-sizing": "border-box",
+      display: "grid",
+      "place-items": "center",
+      width: "40px",
+      "min-width": "40px",
+      "max-width": "40px",
+      height: "40px",
+      "min-height": "40px",
+      "max-height": "40px",
+      margin: "0",
+      padding: "0",
+      border: "1.5px solid rgba(255,255,255,0.82)",
+      "border-radius": "999px",
+      background: "#0f766e",
+      color: "#ffffff",
+      "box-shadow": "0 4px 16px rgba(0,0,0,0.48)",
+      "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+      "font-size": "20px",
+      "font-weight": "800",
+      "line-height": "1",
+      "text-align": "center",
+      opacity: button.disabled ? "0.55" : "1",
+      visibility: "visible",
+      "pointer-events": "auto",
+      appearance: "none",
+      "-webkit-appearance": "none",
+      "touch-action": "manipulation",
+      "-webkit-tap-highlight-color": "transparent"
+    };
+
+    Object.keys(values).forEach(function (property) {
+      setImportant(style, property, values[property]);
+    });
   }
 
   function scheduleRender() {
