@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04.2",
+  "version": "2026-08-04.3",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -46,9 +46,9 @@
           "texture": {
             "enabled": true,
             "type": "wood",
-            "color": "rgba(235, 191, 168, 0.09)",
-            "size": 10,
-            "blendMode": "overlay"
+            "color": "rgba(244, 178, 145, 0.28)",
+            "size": 7,
+            "blendMode": "normal"
           }
         },
         "textColor": "#fff7fc",
