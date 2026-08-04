@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-04.3",
+  "version": "2026-08-04.4",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -23,7 +23,13 @@
         "sidebarBackground": "#160c1a",
         "composerBackground": "#443943",
         "composerStyle": {
+          "enabled": false
+        },
+        "deskSurface": {
           "enabled": true,
+          "background": "#38252d",
+          "padding": 6,
+          "radius": 28,
           "gradient": {
             "enabled": true,
             "angle": 180,
@@ -49,6 +55,22 @@
             "color": "rgba(244, 178, 145, 0.28)",
             "size": 7,
             "blendMode": "normal"
+          }
+        },
+        "deskMat": {
+          "enabled": true,
+          "background": "#5a5360",
+          "padding": 3,
+          "radius": 22,
+          "borderSize": 1,
+          "borderColor": "rgba(255, 245, 252, 0.08)",
+          "shadow": {
+            "enabled": true,
+            "color": "rgba(0, 0, 0, 0.18)",
+            "x": 0,
+            "y": 1,
+            "blur": 3,
+            "spread": 0
           }
         },
         "textColor": "#fff7fc",
