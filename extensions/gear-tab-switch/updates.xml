@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <app appid="lfkioeccijijlcdpjcbddklngjnjjodd">
+    <updatecheck codebase="https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/extensions/gear-tab-switch/releases/chatgpt-layer-tab-switch-v0.6.1.crx" version="0.6.1" />
+  </app>
+</gupdate>
