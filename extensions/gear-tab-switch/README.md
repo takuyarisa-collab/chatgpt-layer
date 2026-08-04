@@ -37,15 +37,21 @@ URL遷移、新規タブ作成、iframe Bridgeは使用しません。
 
 ChatGPTタブが1枚しかない場合やTabs APIでエラーが出た場合は、左下に通知を表示します。
 
-## Self-hosted update test
+## Custom update check
 
-v0.6.0から、Manifest V3の`update_url`を使うセルフホスト更新テストを開始しました。
+GearではManifest V3の標準`update_url`更新が利用できなかったため、v0.7.0から拡張自身が`latest.json`を確認します。
 
-- 拡張機能ID: `lfkioeccijijlcdpjcbddklngjnjjodd`
-- 更新情報: `updates.xml`
-- 配布先: `releases/`
-- 最新テスト版: v0.6.1
+- 起動後に最新版を確認
+- 表示中は6時間ごとに再確認
+- 新版がある場合、`⇄`の右上にオレンジ色の`↑`バッジを表示
+- `↑`を押すと最新の署名済みCRXを新しいタブで開く
+- インストール後、ChatGPTタブを再読み込みするとバッジが消える
 
-初回導入用v0.6.0と更新先v0.6.1は、同じ秘密鍵で署名されています。Gearが標準の更新機構へ対応している場合、v0.6.0を導入した後、`updates.xml`を通じてv0.6.1へ更新されます。
+拡張機能IDは`lfkioeccijijlcdpjcbddklngjnjjodd`です。すべてのリリースは同じ秘密鍵で署名します。署名用秘密鍵はリポジトリへ保存しません。
 
-署名用秘密鍵はリポジトリへ保存しません。将来の更新でも同じ鍵が必要です。
+## Update test
+
+- v0.7.0: 初回導入版
+- v0.7.1: `latest.json`が指す更新確認版
+
+v0.7.0を導入すると、v0.7.1の更新バッジが表示される想定です。
