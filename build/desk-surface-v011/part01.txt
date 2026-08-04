@@ -1,0 +1,247 @@
+// ==UserScript==
+// @name         ChatGPT Layer Loader
+// @namespace    https://github.com/takuyarisa-collab/chatgpt-layer
+// @version      0.11.0
+// @description  Merge global, project, and chat layers, apply JSON themes, style the composer, and render layer actions.
+// @author       TaC & Shion
+// @match        https://chatgpt.com/*
+// @match        https://chat.openai.com/*
+// @run-at       document-idle
+// @noframes
+// @grant        GM_xmlhttpRequest
+// @grant        GM.xmlHttpRequest
+// @connect      raw.githubusercontent.com
+// @connect      cdn.jsdelivr.net
+// @updateURL    https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.meta.js
+// @downloadURL  https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.user.js
+// ==/UserScript==
+(function () {
+"use strict";
+if (window.top !== window.self) return;
+var LAYER_ID = "chatgpt-layer";
+var SCROLL_BUTTON_ID = LAYER_ID + "-scroll-bottom";
+var RELOAD_BUTTON_ID = LAYER_ID + "-reload";
+var ACTION_BUTTON_PREFIX = LAYER_ID + "-action-";
+var ACTION_ATTRIBUTE = "data-chatgpt-layer-action-id";
+var COMPOSER_SURFACE_ATTRIBUTE = "data-chatgpt-layer-composer-surface";
+var COMPOSER_SLOT_ATTRIBUTE = "data-chatgpt-layer-composer-slot";
+var DESK_SURFACE_ATTRIBUTE = "data-chatgpt-layer-desk-surface";
+var DESK_MAT_ATTRIBUTE = "data-chatgpt-layer-desk-mat";
+var EDITOR_SELECTOR = '#prompt-textarea, textarea[data-id="root"], form textarea, form [contenteditable="true"], form [contenteditable="plaintext-only"]';
+var TOAST_ID = LAYER_ID + "-toast";
+var THEME_STYLE_ID = LAYER_ID + "-theme-style";
+var CACHE_KEY = LAYER_ID + ":last-good-config:v9";
+var LAYER_ATTRIBUTE = "data-chatgpt-layer";
+var LAYERS_ATTRIBUTE = "data-chatgpt-layers";
+var PROJECT_ATTRIBUTE = "data-chatgpt-project-id";
+var CHAT_ATTRIBUTE = "data-chatgpt-chat-id";
+var VERSION_ATTRIBUTE = "data-chatgpt-layer-config-version";
+var THEME_ATTRIBUTE = "data-chatgpt-layer-theme";
+var CONFIG_URLS = [
+"https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/chatgpt-layer.config.json",
+"https://cdn.jsdelivr.net/gh/takuyarisa-collab/chatgpt-layer@main/chatgpt-layer.config.json"
+];
+var DEFAULT_CONFIG = {
+version: "builtin-0.11.0",
+global: {},
+projects: {},
+chats: {},
+layers: { default: {} }
+};
+var DEFAULT_THEME = {
+pageBackground: "#100d16",
+surfaceBackground: "#17121f",
+surfaceAltBackground: "#20192b",
+sidebarBackground: "#0c0a11",
+composerBackground: "#1c1626",
+textColor: "#f5f1fa",
+mutedTextColor: "#bdb5ca",
+borderColor: "rgba(168, 139, 250, 0.18)",
+accentColor: "#9f82ff"
+};
+var DEFAULT_BUTTON_STYLE = {
+size: 40,
+fontSize: 18,
+background: "#7c3aed",
+color: "#ffffff",
+borderColor: "rgba(255,255,255,0.82)"
+};
+var DEFAULT_LAYER_BUTTON_STYLE = {
+size: 40,
+fontSize: 16,
+background: "#5f2f64",
+color: "#ffffff",
+borderColor: "rgba(255,255,255,0.82)"
+};
+var OWN_THEME_PROPERTIES = [
+"--cgl-page-bg",
+"--cgl-surface-bg",
+"--cgl-surface-alt-bg",
+"--cgl-sidebar-bg",
+"--cgl-composer-bg",
+"--cgl-composer-background-image",
+"--cgl-composer-background-size",
+"--cgl-composer-background-position",
+"--cgl-composer-background-blend",
+"--cgl-composer-box-shadow",
+"--cgl-desk-surface-bg",
+"--cgl-desk-surface-padding",
+"--cgl-desk-surface-radius",
+"--cgl-desk-surface-background-image",
+"--cgl-desk-surface-background-size",
+"--cgl-desk-surface-background-position",
+"--cgl-desk-surface-background-blend",
+"--cgl-desk-surface-box-shadow",
+"--cgl-desk-mat-bg",
+"--cgl-desk-mat-padding",
+"--cgl-desk-mat-radius",
+"--cgl-desk-mat-border-size",
+"--cgl-desk-mat-border-color",
+"--cgl-desk-mat-box-shadow",
+"--cgl-text",
+"--cgl-muted-text",
+"--cgl-border",
+"--cgl-accent"
+];
+var CHATGPT_THEME_PROPERTIES = [
+"--main-surface-primary",
+"--main-surface-secondary",
+"--main-surface-tertiary",
+"--sidebar-surface-primary",
+"--sidebar-surface-secondary",
+"--composer-surface-primary",
+"--composer-surface-secondary",
+"--text-primary",
+"--text-secondary",
+"--text-tertiary",
+"--border-light",
+"--border-medium"
+];
+var COMPOSER_INLINE_PROPERTIES = [
+"width",
+"max-width",
+"min-width",
+"margin-top",
+"margin-right",
+"margin-bottom",
+"margin-left",
+"box-sizing"
+];
+var activeConfig = DEFAULT_CONFIG;
+var renderScheduled = false;
+var lastContextKey = "";
+var composerOriginalStyles = new WeakMap();
+var deskResizeObserver = typeof ResizeObserver === "function"
+? new ResizeObserver(scheduleRender)
+: null;
+function isRecord(value) {
+return value && typeof value === "object" && !Array.isArray(value);
+}
+function normalizeRecord(value) {
+return isRecord(value) ? value : {};
+}
+function isSafeKey(key) {
+return key !== "__proto__" && key !== "prototype" && key !== "constructor";
+}
+function cloneValue(value) {
+if (Array.isArray(value)) return value.map(cloneValue);
+if (isRecord(value)) {
+var copy = {};
+Object.keys(value).forEach(function (key) {
+if (isSafeKey(key)) copy[key] = cloneValue(value[key]);
+});
+return copy;
+}
+return value;
+}
+function hasStableIds(values) {
+return values.every(function (item) {
+return isRecord(item) && typeof item.id === "string" && item.id.length > 0;
+});
+}
+function mergeArrays(base, override) {
+if (!hasStableIds(base) || !hasStableIds(override)) return cloneValue(override);
+var result = base.map(cloneValue);
+var indexes = {};
+result.forEach(function (item, index) {
+indexes[item.id] = index;
+});
+override.forEach(function (item) {
+if (Object.prototype.hasOwnProperty.call(indexes, item.id)) {
+var index = indexes[item.id];
+result[index] = mergeValues(result[index], item);
+} else {
+indexes[item.id] = result.length;
+result.push(cloneValue(item));
+}
+});
+return result;
+}
+function mergeValues(base, override) {
+if (Array.isArray(base) && Array.isArray(override)) return mergeArrays(base, override);
+if (isRecord(base) && isRecord(override)) {
+var result = cloneValue(base);
+Object.keys(override).forEach(function (key) {
+if (!isSafeKey(key)) return;
+result[key] = Object.prototype.hasOwnProperty.call(result, key)
+? mergeValues(result[key], override[key])
+: cloneValue(override[key]);
+});
+return result;
+}
+return cloneValue(override);
+}
+function normalizeLayerSelection(value, layers) {
+var candidates = [];
+if (typeof value === "string") candidates = [value];
+else if (Array.isArray(value)) candidates = value;
+else if (isRecord(value)) {
+if (typeof value.layer === "string") candidates.push(value.layer);
+if (Array.isArray(value.layers)) candidates = candidates.concat(value.layers);
+}
+var seen = {};
+return candidates.filter(function (layerName) {
+if (typeof layerName !== "string") return false;
+if (!layers[layerName] || seen[layerName]) return false;
+seen[layerName] = true;
+return true;
+});
+}
+function validateConfig(value) {
+if (!isRecord(value)) throw new Error("設定ファイルの形式が不正です。");
+var rawLayers = normalizeRecord(value.layers);
+var layers = {};
+Object.keys(rawLayers).forEach(function (layerName) {
+if (/^[a-z0-9_-]+$/i.test(layerName)) {
+layers[layerName] = cloneValue(normalizeRecord(rawLayers[layerName]));
+}
+});
+if (!layers.default) layers.default = {};
+var projects = {};
+Object.keys(normalizeRecord(value.projects)).forEach(function (projectId) {
+if (!/^g-p-[a-z0-9]+$/i.test(projectId)) return;
+var selection = normalizeLayerSelection(value.projects[projectId], layers);
+if (selection.length) projects[projectId] = selection;
+});
+var chats = {};
+Object.keys(normalizeRecord(value.chats)).forEach(function (chatId) {
+if (!/^[a-z0-9-]{8,128}$/i.test(chatId)) return;
+var selection = normalizeLayerSelection(value.chats[chatId], layers);
+if (selection.length) chats[chatId] = selection;
+});
+return {
+version: String(value.version || "unknown"),
+global: mergeValues(normalizeRecord(value.base), normalizeRecord(value.global)),
+projects: projects,
+chats: chats,
+layers: layers
+};
+}
+function requestWithLegacyGM(url) {
+return new Promise(function (resolve, reject) {
+GM_xmlhttpRequest({
+method: "GET",
+url: url,
+headers: { "Cache-Control": "no-cache" },
+timeout: 10000,
+onload: function (response) {
