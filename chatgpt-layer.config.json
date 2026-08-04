@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-01.4",
+  "version": "2026-08-04.1",
   "global": {},
   "projects": {
     "g-p-6a47aadbce188191b178e125bd7c4e86": {
@@ -21,39 +21,39 @@
         "surfaceBackground": "#30172f",
         "surfaceAltBackground": "#3f2a3e",
         "sidebarBackground": "#160c1a",
-        "composerBackground": "#473744",
+        "composerBackground": "#443943",
         "composerStyle": {
           "enabled": true,
           "gradient": {
             "enabled": true,
             "angle": 180,
-            "from": "#51404e",
-            "to": "#40313e"
+            "from": "#4a3035",
+            "to": "#2e2029"
           },
           "shadow": {
             "enabled": true,
-            "color": "rgba(8, 4, 10, 0.40)",
+            "color": "rgba(7, 3, 8, 0.48)",
             "x": 0,
-            "y": 10,
-            "blur": 34,
-            "spread": -12
+            "y": 12,
+            "blur": 36,
+            "spread": -11
           },
           "highlight": {
             "enabled": true,
-            "color": "rgba(255, 246, 252, 0.10)",
+            "color": "rgba(255, 225, 214, 0.11)",
             "size": 1
           },
           "texture": {
             "enabled": true,
-            "type": "linen",
-            "color": "rgba(255, 246, 252, 0.028)",
-            "size": 7,
+            "type": "wood",
+            "color": "rgba(224, 181, 164, 0.035)",
+            "size": 14,
             "blendMode": "soft-light"
           }
         },
         "textColor": "#fff7fc",
         "mutedTextColor": "#dcc8d7",
-        "borderColor": "rgba(239, 207, 231, 0.30)",
+        "borderColor": "rgba(229, 194, 210, 0.30)",
         "accentColor": "#ddb1e9"
       },
       "actions": [
@@ -66,9 +66,9 @@
           "mode": "empty",
           "order": 10,
           "style": {
-            "background": "#755574",
+            "background": "#70566e",
             "color": "#fffafc",
-            "borderColor": "rgba(255,244,252,0.78)",
+            "borderColor": "rgba(255, 235, 244, 0.76)",
             "size": 40,
             "fontSize": 16
           }
