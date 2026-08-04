@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Layer Tab Switch for Gear",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Adds a left-side button that switches to the next already-open ChatGPT tab in Gear Browser.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Uo5/t4i9HmhiyE/dljaUdE1Pi4VBjL0E9mGylgg286nu8mNU05CK7PxXe8h5wAfluUxa6Pko/+1pOxDB3WZ8owdMnUCfk+ftBRKAL8PUFKRz3wqqCq4qTCpfZ0JX+h6vlu0MmaDeizWA/sEWNa7c+9zlg4mlZLvzXzBD8L0CIr7GieU+kXhGuujFnXThNs3R5Z0r7hIJp8Qotq3EmMjJU/fdq0jSP6d4dsUlogtXg3w/ivQRPZtDEoZZeRrIgXIyHlsTSBP1LON/GjoBieETRkAYqocPKZ2kmH+j5KI1zpSAVVS5x2NLeZuPstBb9n2TyX06qWWspHAM8ur3xKa8QIDAQAB",
-  "permissions": ["tabs"],
+  "permissions": ["tabs", "storage"],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
