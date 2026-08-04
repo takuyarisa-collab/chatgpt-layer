@@ -1,0 +1,220 @@
+if (response.status >= 200 && response.status < 300) resolve(response.responseText);
+else reject(new Error("HTTP " + response.status));
+},
+onerror: function () { reject(new Error("network error")); },
+ontimeout: function () { reject(new Error("timeout")); }
+});
+});
+}
+async function requestText(url) {
+var target = url + (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+try {
+var response = await fetch(target, { cache: "no-store", credentials: "omit" });
+if (response.ok) return response.text();
+} catch (_) {}
+if (typeof GM_xmlhttpRequest === "function") return requestWithLegacyGM(target);
+if (globalThis.GM && typeof globalThis.GM.xmlHttpRequest === "function") {
+var gmResponse = await globalThis.GM.xmlHttpRequest({
+method: "GET",
+url: target,
+headers: { "Cache-Control": "no-cache" },
+timeout: 10000
+});
+if (gmResponse.status >= 200 && gmResponse.status < 300) return gmResponse.responseText;
+throw new Error("HTTP " + gmResponse.status);
+}
+throw new Error("利用できる通信手段がありません。");
+}
+async function loadRemoteConfig() {
+var lastError = null;
+for (var index = 0; index < CONFIG_URLS.length; index += 1) {
+try {
+return validateConfig(JSON.parse(await requestText(CONFIG_URLS[index])));
+} catch (error) {
+lastError = error;
+}
+}
+throw lastError || new Error("設定を取得できませんでした。");
+}
+function readCachedConfig() {
+try {
+var text = localStorage.getItem(CACHE_KEY);
+return text ? validateConfig(JSON.parse(text)) : null;
+} catch (_) {
+return null;
+}
+}
+function writeCachedConfig(config) {
+try {
+localStorage.setItem(CACHE_KEY, JSON.stringify(config));
+} catch (_) {}
+}
+function getProjectId(pathname) {
+var path = pathname || location.pathname;
+var match = path.match(/^\/g\/(g-p-[a-z0-9]{16,64})(?:-[^/]+)?(?:\/|$)/i);
+return match ? match[1] : null;
+}
+function getChatId(pathname) {
+var path = pathname || location.pathname;
+var match = path.match(/\/c\/([a-z0-9-]{8,128})(?:\/|$)/i);
+return match ? match[1] : null;
+}
+function appendUnique(target, values) {
+values.forEach(function (value) {
+if (target.indexOf(value) < 0) target.push(value);
+});
+}
+function resolveContext(config) {
+var projectId = getProjectId();
+var chatId = getChatId();
+var layerNames = [];
+appendUnique(layerNames, projectId ? config.projects[projectId] || [] : []);
+appendUnique(layerNames, chatId ? config.chats[chatId] || [] : []);
+if (!layerNames.length) layerNames.push("default");
+var settings = cloneValue(config.global);
+layerNames.forEach(function (layerName) {
+settings = mergeValues(settings, config.layers[layerName] || {});
+});
+return {
+configVersion: config.version,
+projectId: projectId,
+chatId: chatId,
+layerNames: layerNames,
+layerName: layerNames[layerNames.length - 1],
+settings: settings
+};
+}
+function normalizeColor(value, fallback) {
+if (typeof value !== "string") return fallback;
+var candidate = value.trim();
+if (!candidate) return fallback;
+if (globalThis.CSS && typeof globalThis.CSS.supports === "function") {
+if (!globalThis.CSS.supports("color", candidate)) return fallback;
+}
+return candidate;
+}
+function clampNumber(value, fallback, minimum, maximum) {
+var number = Number(value);
+if (!Number.isFinite(number)) return fallback;
+return Math.min(maximum, Math.max(minimum, number));
+}
+function normalizeGradient(value, fallbackBackground) {
+if (!isRecord(value) || value.enabled === false) return null;
+return {
+angle: clampNumber(value.angle, 180, -360, 360),
+from: normalizeColor(value.from, fallbackBackground),
+to: normalizeColor(value.to, fallbackBackground)
+};
+}
+function normalizeShadow(value, fallback) {
+if (!isRecord(value) || value.enabled === false) return null;
+var defaults = fallback || {};
+return {
+color: normalizeColor(value.color, defaults.color || "rgba(0,0,0,0.42)"),
+x: clampNumber(value.x, defaults.x || 0, -40, 40),
+y: clampNumber(value.y, defaults.y === undefined ? 10 : defaults.y, -40, 40),
+blur: clampNumber(value.blur, defaults.blur === undefined ? 24 : defaults.blur, 0, 80),
+spread: clampNumber(value.spread, defaults.spread === undefined ? -8 : defaults.spread, -40, 40)
+};
+}
+function normalizeHighlight(value) {
+if (!isRecord(value) || value.enabled === false) return null;
+return {
+color: normalizeColor(value.color, "rgba(255,255,255,0.12)"),
+size: clampNumber(value.size, 1, 0, 4)
+};
+}
+function normalizeTexture(value) {
+if (!isRecord(value) || value.enabled === false) return null;
+var type = typeof value.type === "string" ? value.type : "grain";
+if (["grain", "linen", "wood"].indexOf(type) < 0) type = "grain";
+var blendMode = typeof value.blendMode === "string" ? value.blendMode : "soft-light";
+if (["normal", "soft-light", "overlay", "multiply", "screen"].indexOf(blendMode) < 0) {
+blendMode = "soft-light";
+}
+return {
+type: type,
+color: normalizeColor(value.color, "rgba(255,255,255,0.035)"),
+size: clampNumber(value.size, 6, 2, 32),
+blendMode: blendMode
+};
+}
+function normalizeVisualStyle(value, fallbackBackground) {
+if (!isRecord(value) || value.enabled === false) return null;
+return {
+background: normalizeColor(value.background, fallbackBackground),
+gradient: normalizeGradient(value.gradient, fallbackBackground),
+shadow: normalizeShadow(value.shadow),
+highlight: normalizeHighlight(value.highlight),
+texture: normalizeTexture(value.texture)
+};
+}
+function normalizeComposerStyle(value, composerBackground) {
+return normalizeVisualStyle(value, composerBackground);
+}
+function normalizeDeskSurface(value, composerBackground) {
+var visual = normalizeVisualStyle(value, composerBackground);
+if (!visual) return null;
+visual.padding = clampNumber(value.padding, 6, 2, 18);
+visual.radius = clampNumber(value.radius, 28, 12, 52);
+return visual;
+}
+function normalizeDeskMat(value, composerBackground) {
+if (!isRecord(value) || value.enabled === false) return null;
+return {
+background: normalizeColor(value.background, "#5a5360"),
+padding: clampNumber(value.padding, 2, 0, 12),
+radius: clampNumber(value.radius, 22, 8, 48),
+borderSize: clampNumber(value.borderSize, 1, 0, 4),
+borderColor: normalizeColor(value.borderColor, "rgba(255,255,255,0.06)"),
+shadow: normalizeShadow(value.shadow, {
+color: "rgba(0,0,0,0.18)",
+x: 0,
+y: 1,
+blur: 3,
+spread: 0
+}),
+composerBackground: composerBackground
+};
+}
+function normalizeTheme(value) {
+if (!isRecord(value) || value.enabled === false) return null;
+var composerBackground = normalizeColor(value.composerBackground, DEFAULT_THEME.composerBackground);
+var deskSurface = normalizeDeskSurface(value.deskSurface, composerBackground);
+var deskMat = deskSurface ? normalizeDeskMat(value.deskMat, composerBackground) : null;
+if (!deskMat) deskSurface = null;
+return {
+pageBackground: normalizeColor(value.pageBackground, DEFAULT_THEME.pageBackground),
+surfaceBackground: normalizeColor(value.surfaceBackground, DEFAULT_THEME.surfaceBackground),
+surfaceAltBackground: normalizeColor(value.surfaceAltBackground, DEFAULT_THEME.surfaceAltBackground),
+sidebarBackground: normalizeColor(value.sidebarBackground, DEFAULT_THEME.sidebarBackground),
+composerBackground: composerBackground,
+composerStyle: normalizeComposerStyle(value.composerStyle, composerBackground),
+deskSurface: deskSurface,
+deskMat: deskMat,
+textColor: normalizeColor(value.textColor, DEFAULT_THEME.textColor),
+mutedTextColor: normalizeColor(value.mutedTextColor, DEFAULT_THEME.mutedTextColor),
+borderColor: normalizeColor(value.borderColor, DEFAULT_THEME.borderColor),
+accentColor: normalizeColor(value.accentColor, DEFAULT_THEME.accentColor)
+};
+}
+function buildTextureLayers(texture) {
+if (!texture) return [];
+var color = texture.color;
+var size = texture.size;
+var layers = [];
+if (texture.type === "grain") {
+layers.push({
+image: "radial-gradient(circle, " + color + " 0, " + color + " 0.6px, transparent 0.8px)",
+size: size + "px " + size + "px",
+position: "0 0",
+blend: texture.blendMode
+});
+} else if (texture.type === "linen") {
+layers.push({
+image: "repeating-linear-gradient(0deg, " + color + " 0, " + color + " 1px, transparent 1px, transparent " + size + "px)",
+size: "auto",
+position: "0 0",
+blend: texture.blendMode
+});
+layers.push({
