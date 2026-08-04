@@ -21,40 +21,26 @@
 
   function showToast(text, isError) {
     if (!document.body) return;
-
     var toast = document.getElementById(TOAST_ID);
     if (!toast) {
       toast = document.createElement("div");
       toast.id = TOAST_ID;
       document.body.appendChild(toast);
     }
-
     toast.textContent = text;
     var style = toast.style;
     var values = {
-      position: "fixed",
-      left: "16px",
-      right: "auto",
-      bottom: "170px",
-      "z-index": "2147483647",
-      "max-width": "calc(100vw - 32px)",
-      padding: "9px 12px",
-      "border-radius": "10px",
-      background: isError ? "#7f1d1d" : "#202024",
-      color: "#ffffff",
+      position: "fixed", left: "16px", right: "auto", bottom: "170px",
+      "z-index": "2147483647", "max-width": "calc(100vw - 32px)",
+      padding: "9px 12px", "border-radius": "10px",
+      background: isError ? "#7f1d1d" : "#202024", color: "#ffffff",
       "box-shadow": "0 4px 16px rgba(0,0,0,0.45)",
       font: "600 12px/1.45 -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
       "pointer-events": "none"
     };
-
-    Object.keys(values).forEach(function (property) {
-      setImportant(style, property, values[property]);
-    });
-
+    Object.keys(values).forEach(function (property) { setImportant(style, property, values[property]); });
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(function () {
-      if (toast && toast.parentNode) toast.remove();
-    }, 4200);
+    showToast.timer = setTimeout(function () { if (toast && toast.parentNode) toast.remove(); }, 4200);
   }
 
   function sendMessage(message) {
@@ -63,27 +49,20 @@
         reject(new Error("runtime.sendMessage is unavailable"));
         return;
       }
-
       try {
         var settled = false;
-
         function finish(error, response) {
           if (settled) return;
           settled = true;
           if (error) reject(error);
           else resolve(response);
         }
-
         var result = api.runtime.sendMessage(message, function (response) {
           var error = api.runtime && api.runtime.lastError;
           finish(error ? new Error(error.message) : null, response);
         });
-
         if (result && typeof result.then === "function") {
-          result.then(
-            function (response) { finish(null, response); },
-            function (error) { finish(error); }
-          );
+          result.then(function (response) { finish(null, response); }, function (error) { finish(error); });
         }
       } catch (error) {
         reject(error);
@@ -91,21 +70,20 @@
     });
   }
 
+  function registerCurrentTab() {
+    sendMessage({
+      type: "chatgpt-layer-register-tab",
+      version: VERSION
+    }).catch(function () {});
+  }
+
   async function switchTab(button) {
     button.disabled = true;
     ensureControls();
-
     try {
-      var result = await sendMessage({
-        type: "chatgpt-layer-switch-next-tab",
-        version: VERSION
-      });
-
+      var result = await sendMessage({ type: "chatgpt-layer-switch-next-tab", version: VERSION });
       if (!result || !result.ok) {
-        showToast(
-          result && result.message ? result.message : "タブ切り替えに失敗しました。",
-          true
-        );
+        showToast(result && result.message ? result.message : "タブ切り替えに失敗しました。", true);
       }
     } catch (error) {
       showToast("切り替え失敗: " + String(error && error.message || error), true);
@@ -119,13 +97,8 @@
     var now = Date.now();
     if (!force && now - lastUpdateCheck < UPDATE_CHECK_INTERVAL) return;
     lastUpdateCheck = now;
-
     try {
-      var result = await sendMessage({
-        type: "chatgpt-layer-check-tab-switch-update",
-        version: VERSION
-      });
-
+      var result = await sendMessage({ type: "chatgpt-layer-check-tab-switch-update", version: VERSION });
       updateInfo = result && result.ok && result.updateAvailable ? result : null;
       ensureControls();
     } catch (_) {
@@ -152,50 +125,22 @@
     button.setAttribute("title", "次のChatGPTタブへ切り替える v" + VERSION);
     button.hidden = false;
     button.removeAttribute("aria-hidden");
-    button.onclick = function () {
-      switchTab(button);
-    };
+    button.onclick = function () { switchTab(button); };
 
-    var buttonValues = {
-      position: "fixed",
-      top: "auto",
-      left: "16px",
-      right: "auto",
-      bottom: "120px",
-      "z-index": "2147483647",
-      "box-sizing": "border-box",
-      display: "grid",
-      "place-items": "center",
-      width: "40px",
-      "min-width": "40px",
-      "max-width": "40px",
-      height: "40px",
-      "min-height": "40px",
-      "max-height": "40px",
-      margin: "0",
-      padding: "0",
-      border: "1.5px solid rgba(255,255,255,0.82)",
-      "border-radius": "999px",
-      background: "#0f766e",
-      color: "#ffffff",
-      "box-shadow": "0 4px 16px rgba(0,0,0,0.48)",
-      "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-      "font-size": "20px",
-      "font-weight": "800",
-      "line-height": "1",
-      "text-align": "center",
-      opacity: button.disabled ? "0.55" : "1",
-      visibility: "visible",
-      "pointer-events": "auto",
-      appearance: "none",
-      "-webkit-appearance": "none",
-      "touch-action": "manipulation",
+    var values = {
+      position: "fixed", top: "auto", left: "16px", right: "auto", bottom: "120px",
+      "z-index": "2147483647", "box-sizing": "border-box", display: "grid",
+      "place-items": "center", width: "40px", "min-width": "40px", "max-width": "40px",
+      height: "40px", "min-height": "40px", "max-height": "40px", margin: "0", padding: "0",
+      border: "1.5px solid rgba(255,255,255,0.82)", "border-radius": "999px",
+      background: "#0f766e", color: "#ffffff", "box-shadow": "0 4px 16px rgba(0,0,0,0.48)",
+      "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif", "font-size": "20px",
+      "font-weight": "800", "line-height": "1", "text-align": "center",
+      opacity: button.disabled ? "0.55" : "1", visibility: "visible", "pointer-events": "auto",
+      appearance: "none", "-webkit-appearance": "none", "touch-action": "manipulation",
       "-webkit-tap-highlight-color": "transparent"
     };
-
-    Object.keys(buttonValues).forEach(function (property) {
-      setImportant(button.style, property, buttonValues[property]);
-    });
+    Object.keys(values).forEach(function (property) { setImportant(button.style, property, values[property]); });
 
     var update = document.getElementById(UPDATE_ID);
     if (!updateInfo) {
@@ -215,57 +160,29 @@
     }
 
     update.href = updateInfo.crx;
-    update.setAttribute(
-      "aria-label",
-      "Tab Switchをv" + updateInfo.latestVersion + "へ更新"
-    );
+    update.setAttribute("aria-label", "Tab Switchをv" + updateInfo.latestVersion + "へ更新");
     update.setAttribute("title", "更新あり: v" + updateInfo.latestVersion);
     update.onclick = function () {
-      showToast(
-        "v" + updateInfo.latestVersion + "を開きます。Gearでインストールしてください。",
-        false
-      );
+      showToast("v" + updateInfo.latestVersion + "を開きます。Gearでインストールしてください。", false);
     };
 
     var updateValues = {
-      position: "fixed",
-      left: "44px",
-      right: "auto",
-      bottom: "148px",
-      "z-index": "2147483647",
-      "box-sizing": "border-box",
-      display: "grid",
-      "place-items": "center",
-      width: "22px",
-      height: "22px",
-      margin: "0",
-      padding: "0",
-      border: "1.5px solid rgba(255,255,255,0.92)",
-      "border-radius": "999px",
-      background: "#f59e0b",
-      color: "#111827",
-      "box-shadow": "0 2px 8px rgba(0,0,0,0.48)",
-      "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-      "font-size": "14px",
-      "font-weight": "900",
-      "line-height": "1",
-      "text-align": "center",
-      "text-decoration": "none",
-      visibility: "visible",
-      "pointer-events": "auto",
-      "touch-action": "manipulation",
+      position: "fixed", left: "44px", right: "auto", bottom: "148px",
+      "z-index": "2147483647", "box-sizing": "border-box", display: "grid",
+      "place-items": "center", width: "22px", height: "22px", margin: "0", padding: "0",
+      border: "1.5px solid rgba(255,255,255,0.92)", "border-radius": "999px",
+      background: "#f59e0b", color: "#111827", "box-shadow": "0 2px 8px rgba(0,0,0,0.48)",
+      "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif", "font-size": "14px",
+      "font-weight": "900", "line-height": "1", "text-align": "center", "text-decoration": "none",
+      visibility: "visible", "pointer-events": "auto", "touch-action": "manipulation",
       "-webkit-tap-highlight-color": "transparent"
     };
-
-    Object.keys(updateValues).forEach(function (property) {
-      setImportant(update.style, property, updateValues[property]);
-    });
+    Object.keys(updateValues).forEach(function (property) { setImportant(update.style, property, updateValues[property]); });
   }
 
   function scheduleRender() {
     if (renderScheduled) return;
     renderScheduled = true;
-
     requestAnimationFrame(function () {
       renderScheduled = false;
       ensureControls();
@@ -273,16 +190,13 @@
   }
 
   ensureControls();
-  setTimeout(function () {
-    checkForUpdate(true);
-  }, 1500);
-
+  setTimeout(registerCurrentTab, 250);
+  setTimeout(function () { checkForUpdate(true); }, 1500);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) checkForUpdate(false);
+    if (!document.hidden) {
+      registerCurrentTab();
+      checkForUpdate(false);
+    }
   });
-
-  new MutationObserver(scheduleRender).observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
+  new MutationObserver(scheduleRender).observe(document.documentElement, { childList: true, subtree: true });
 })();
