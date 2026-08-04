@@ -1,0 +1,120 @@
+runInsertPromptAction(action);
+return;
+}
+if (action.type === "reload") {
+reloadPage();
+return;
+}
+if (action.type === "scrollToBottom") {
+scrollToBottom();
+return;
+}
+showToast("未対応のアクションです。", true);
+}
+function removeStaleLayerButtons(activeIds) {
+document.querySelectorAll('[' + ACTION_ATTRIBUTE + ']').forEach(function (button) {
+var actionId = button.getAttribute(ACTION_ATTRIBUTE);
+if (!activeIds[actionId]) button.remove();
+});
+}
+function ensureLayerButtons(value) {
+var actions = normalizeActions(value);
+var activeIds = {};
+var right = 112;
+actions.forEach(function (action) {
+activeIds[action.id] = true;
+var buttonId = ACTION_BUTTON_PREFIX + action.id;
+var button = ensureActionButton(
+buttonId,
+action.label,
+action.title,
+right,
+action.style,
+function () { runLayerAction(action); }
+);
+if (button) button.setAttribute(ACTION_ATTRIBUTE, action.id);
+right += action.style.size + 8;
+});
+removeStaleLayerButtons(activeIds);
+}
+function setAttributeIfChanged(element, name, value) {
+if (value === null || value === undefined || value === "") {
+if (element.hasAttribute(name)) element.removeAttribute(name);
+return;
+}
+if (element.getAttribute(name) !== String(value)) element.setAttribute(name, String(value));
+}
+function applyContext(context) {
+var root = document.documentElement;
+if (!root) return;
+setAttributeIfChanged(root, LAYER_ATTRIBUTE, context.layerName);
+setAttributeIfChanged(root, LAYERS_ATTRIBUTE, context.layerNames.join(" "));
+setAttributeIfChanged(root, VERSION_ATTRIBUTE, context.configVersion);
+setAttributeIfChanged(root, PROJECT_ATTRIBUTE, context.projectId);
+setAttributeIfChanged(root, CHAT_ATTRIBUTE, context.chatId);
+applyTheme(context.settings.theme);
+ensureSharedButtons();
+ensureLayerButtons(context.settings.actions);
+var contextKey = context.configVersion + ":" +
+(context.projectId || "none") + ":" +
+(context.chatId || "none") + ":" +
+context.layerNames.join(",");
+if (contextKey !== lastContextKey) {
+lastContextKey = contextKey;
+console.info("[ChatGPT Layer] Active layers", {
+projectId: context.projectId,
+chatId: context.chatId,
+layers: context.layerNames,
+topLayer: context.layerName,
+configVersion: context.configVersion,
+settings: context.settings
+});
+}
+}
+function render() {
+applyContext(resolveContext(activeConfig));
+}
+function scheduleRender() {
+if (renderScheduled) return;
+renderScheduled = true;
+requestAnimationFrame(function () {
+renderScheduled = false;
+render();
+});
+}
+function observeNavigation() {
+["pushState", "replaceState"].forEach(function (methodName) {
+var original = history[methodName];
+if (typeof original !== "function") return;
+history[methodName] = function () {
+var result = original.apply(this, arguments);
+scheduleRender();
+return result;
+};
+});
+window.addEventListener("popstate", scheduleRender);
+window.addEventListener("hashchange", scheduleRender);
+new MutationObserver(scheduleRender).observe(document.documentElement, {
+childList: true,
+subtree: true
+});
+}
+async function start() {
+var cachedConfig = readCachedConfig();
+activeConfig = cachedConfig || DEFAULT_CONFIG;
+render();
+observeNavigation();
+try {
+activeConfig = await loadRemoteConfig();
+writeCachedConfig(activeConfig);
+render();
+} catch (error) {
+console.warn("[ChatGPT Layer] Remote config load failed.", error);
+if (!cachedConfig) {
+activeConfig = DEFAULT_CONFIG;
+render();
+}
+}
+}
+start();
+})();
