@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#17131f">
+  <title>Install ChatGPT Layer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #100d16;
+      color: #f6f1fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      background:
+        radial-gradient(circle at 80% 0%, rgba(145, 106, 255, .18), transparent 38%),
+        linear-gradient(180deg, #17131f 0%, #100d16 100%);
+    }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    .shell {
+      width: min(100%, 620px);
+      margin: 0 auto;
+      padding: max(24px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 42px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 760;
+      letter-spacing: -.02em;
+    }
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 11px;
+      background: rgba(255,255,255,.07);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    .language {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .language button {
+      border: 0;
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: #bdb5ca;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .language button[aria-pressed="true"] {
+      color: #fff;
+      background: rgba(157, 126, 255, .28);
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #b9a7ff;
+      font-size: 13px;
+      font-weight: 760;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      max-width: 14ch;
+      font-size: clamp(38px, 11vw, 62px);
+      line-height: .98;
+      letter-spacing: -.055em;
+    }
+    .lead {
+      margin: 22px 0 0;
+      max-width: 38rem;
+      color: #c9c1d3;
+      font-size: 18px;
+      line-height: 1.55;
+    }
+    .card {
+      margin-top: 34px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 24px;
+      background: rgba(31, 25, 43, .78);
+      box-shadow: 0 22px 60px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05);
+      backdrop-filter: blur(18px);
+    }
+    .steps {
+      display: grid;
+      gap: 15px;
+      margin: 0 0 22px;
+      padding: 0;
+      list-style: none;
+    }
+    .steps li {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      align-items: start;
+      gap: 12px;
+      color: #d9d2e1;
+      line-height: 1.45;
+    }
+    .step-number {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(157, 126, 255, .17);
+      color: #d6ccff;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 58px;
+      border: 0;
+      border-radius: 17px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #a48aff, #7f5cff);
+      color: #fff;
+      font: inherit;
+      font-size: 17px;
+      font-weight: 800;
+      text-decoration: none;
+      box-shadow: 0 13px 28px rgba(100, 70, 220, .32), inset 0 1px 0 rgba(255,255,255,.34);
+    }
+    .primary:active { transform: translateY(1px); }
+    .requirement {
+      margin: 13px 0 0;
+      color: #9f97aa;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+    .after-install {
+      display: none;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.09);
+    }
+    .after-install.visible { display: block; }
+    .after-install p {
+      margin: 0 0 12px;
+      color: #d4ccdc;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50px;
+      border-radius: 15px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: #f4eff8;
+      font-weight: 740;
+      text-decoration: none;
+    }
+    details {
+      margin-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding-top: 16px;
+      color: #aaa1b5;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    summary {
+      color: #c8bfD2;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .fallback {
+      display: inline-block;
+      margin-top: 10px;
+      color: #c6b8ff;
+      font-weight: 700;
+    }
+    footer {
+      margin-top: 26px;
+      color: #847d8d;
+      font-size: 12px;
+      line-height: 1.55;
+      text-align: center;
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="mark">L</span><span>ChatGPT Layer</span></div>
+      <div class="language" aria-label="Language">
+        <button type="button" data-language="en" aria-pressed="true">EN</button>
+        <button type="button" data-language="ja" aria-pressed="false">日本語</button>
+      </div>
+    </header>
+
+    <section>
+      <p class="eyebrow" data-copy="eyebrow">GEAR BROWSER FOR IPHONE</p>
+      <h1 data-copy="title">Make ChatGPT feel like your workspace.</h1>
+      <p class="lead" data-copy="lead">Install ChatGPT Layer directly in Gear. No ZIP file, Files app, desktop, or manual code editing.</p>
+    </section>
+
+    <section class="card" aria-labelledby="install-heading">
+      <ol class="steps">
+        <li><span class="step-number">1</span><span data-copy="step1">Open this page in Gear Browser.</span></li>
+        <li><span class="step-number">2</span><span data-copy="step2">Tap the install button and approve the UserScript.</span></li>
+        <li><span class="step-number">3</span><span data-copy="step3">Open or reload ChatGPT to confirm installation.</span></li>
+      </ol>
+
+      <a class="primary" id="install-button" href="https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/install-test.user.js" data-copy="install">Install for Gear</a>
+      <p class="requirement" data-copy="requirement">Requires Gear Browser on iPhone. This PoC only shows a five-second installation confirmation.</p>
+
+      <div class="after-install" id="after-install">
+        <p data-copy="after">After Gear finishes installing, return here and open ChatGPT.</p>
+        <a class="secondary" href="https://chatgpt.com/" data-copy="openChatGPT">Open ChatGPT</a>
+      </div>
+
+      <details>
+        <summary data-copy="helpTitle">Installation screen did not appear?</summary>
+        <div data-copy="helpBody">Make sure this page is open in Gear, then try the fallback installer.</div>
+        <a class="fallback" href="https://cdn.jsdelivr.net/gh/takuyarisa-collab/chatgpt-layer@product-install-poc/product-install-poc/install-test.user.js" data-copy="fallback">Open fallback installer</a>
+      </details>
+    </section>
+
+    <footer data-copy="privacy">No analytics. No account required. The installed UserScript can be inspected on your device.</footer>
+  </main>
+
+  <script>
+    const copy = {
+      en: {
+        eyebrow: "GEAR BROWSER FOR IPHONE",
+        title: "Make ChatGPT feel like your workspace.",
+        lead: "Install ChatGPT Layer directly in Gear. No ZIP file, Files app, desktop, or manual code editing.",
+        step1: "Open this page in Gear Browser.",
+        step2: "Tap the install button and approve the UserScript.",
+        step3: "Open or reload ChatGPT to confirm installation.",
+        install: "Install for Gear",
+        requirement: "Requires Gear Browser on iPhone. This PoC only shows a five-second installation confirmation.",
+        after: "After Gear finishes installing, return here and open ChatGPT.",
+        openChatGPT: "Open ChatGPT",
+        helpTitle: "Installation screen did not appear?",
+        helpBody: "Make sure this page is open in Gear, then try the fallback installer.",
+        fallback: "Open fallback installer",
+        privacy: "No analytics. No account required. The installed UserScript can be inspected on your device."
+      },
+      ja: {
+        eyebrow: "iPhone・Gear Browser対応",
+        title: "ChatGPTを、自分の作業空間へ。",
+        lead: "ChatGPT LayerをGearから直接インストール。ZIP、ファイルアプリ、パソコン、コード編集は不要です。",
+        step1: "このページをGear Browserで開きます。",
+        step2: "インストールボタンを押し、UserScriptを承認します。",
+        step3: "ChatGPTを開くか再読み込みして、導入を確認します。",
+        install: "Gearにインストール",
+        requirement: "iPhone版Gear Browserが必要です。このPoCは5秒間の導入確認だけを表示します。",
+        after: "Gearでインストールを完了したら、このページへ戻ってChatGPTを開いてください。",
+        openChatGPT: "ChatGPTを開く",
+        helpTitle: "インストール画面が出ない場合",
+        helpBody: "このページをGearで開いていることを確認し、予備の導入リンクを試してください。",
+        fallback: "予備の導入リンクを開く",
+        privacy: "アクセス解析なし・アカウント不要。インストールしたUserScriptは端末上で確認できます。"
+      }
+    };
+
+    const languageButtons = [...document.querySelectorAll("[data-language]")];
+    const copyNodes = [...document.querySelectorAll("[data-copy]")];
+    const installButton = document.getElementById("install-button");
+    const afterInstall = document.getElementById("after-install");
+
+    function setLanguage(language) {
+      const selected = copy[language] ? language : "en";
+      document.documentElement.lang = selected;
+      document.title = selected === "ja" ? "ChatGPT Layerをインストール" : "Install ChatGPT Layer";
+      for (const node of copyNodes) {
+        const value = copy[selected][node.dataset.copy];
+        if (value) node.textContent = value;
+      }
+      for (const button of languageButtons) {
+        button.setAttribute("aria-pressed", String(button.dataset.language === selected));
+      }
+      localStorage.setItem("cglp-install-language", selected);
+    }
+
+    for (const button of languageButtons) {
+      button.addEventListener("click", () => setLanguage(button.dataset.language));
+    }
+
+    installButton.addEventListener("click", () => {
+      afterInstall.classList.add("visible");
+      sessionStorage.setItem("cglp-install-started", "1");
+    });
+
+    if (sessionStorage.getItem("cglp-install-started") === "1") {
+      afterInstall.classList.add("visible");
+    }
+
+    const savedLanguage = localStorage.getItem("cglp-install-language");
+    const deviceLanguage = (navigator.language || "en").toLowerCase().startsWith("ja") ? "ja" : "en";
+    setLanguage(savedLanguage || deviceLanguage);
+  </script>
+</body>
+</html>
