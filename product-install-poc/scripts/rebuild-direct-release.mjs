@@ -4,13 +4,19 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const sourceDir = path.join(root, "product-install-poc/releases/0.2.1-dev1");
+const sourceDir = path.join(root, "product-install-poc/releases/0.2.1-dev2");
 const outputDir = sourceDir;
-const outputPath = path.join(outputDir, "chatgpt-layer-product-0.2.1-dev1.user.js");
-const expectedSha256 = "ffb3f80fbc017608c6cb44a5a8f404e30c5b500b3fd8c795a9822e5bbcc18d9e";
+const outputPath = path.join(outputDir, "chatgpt-layer-product-0.2.1-dev2.user.js");
+const expectedSha256 = "05a64e83e20525b2eb495d127d38375458bb20642995d8696ce9a9651d694506";
 
 const parts = [];
-for (const name of ["payload-01.js", "payload-02.js", "payload-03.js"]) {
+for (const name of [
+  "payload-01.js",
+  "payload-02.js",
+  "payload-03.js",
+  "payload-04.js",
+  "payload-05.js"
+]) {
   const text = await readFile(path.join(sourceDir, name), "utf8");
   const match = text.match(/\.push\("([A-Za-z0-9+/=]+)"\)/);
   if (!match) throw new Error(`Missing payload in ${name}`);
