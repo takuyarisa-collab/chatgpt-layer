@@ -11,14 +11,20 @@ const expectedSha256 = "f1f801438a7eb6a8f0453e764b40ca2a2df5cae4f07567064c40b492
 
 const parts = [];
 for (const name of [
-  "payload-01.js",
-  "payload-02.js"
+  "raw-01.txt",
+  "raw-02.txt",
+  "raw-03.txt",
+  "raw-04.txt",
+  "raw-05.txt",
+  "raw-06.txt"
 ]) {
-  const text = await readFile(path.join(sourceDir, name), "utf8");
-  const match = text.match(/\.push\("([A-Za-z0-9+/=]+)"\)/);
-  if (!match) throw new Error(`Missing payload in ${name}`);
-  parts.push(match[1]);
+  parts.push((await readFile(path.join(sourceDir, name), "utf8")).trim());
 }
+
+const finalPayloadText = await readFile(path.join(sourceDir, "payload-02.js"), "utf8");
+const finalPayloadMatch = finalPayloadText.match(/\.push\("([A-Za-z0-9+/=]+)"\)/);
+if (!finalPayloadMatch) throw new Error("Missing final payload part.");
+parts.push(finalPayloadMatch[1]);
 
 const source = gunzipSync(Buffer.from(parts.join(""), "base64"));
 const actualSha256 = createHash("sha256").update(source).digest("hex");
