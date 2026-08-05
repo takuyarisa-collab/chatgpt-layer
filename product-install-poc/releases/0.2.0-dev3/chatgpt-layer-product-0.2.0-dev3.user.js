@@ -21,11 +21,6 @@
 // ✅ After installation, tap the browser Back button once.
 // ============================================================
 
-// ============================================================
-// ✅ インストール完了後、ブラウザの「戻る」を1回押してください
-// ✅ After installation, tap the browser Back button once.
-// ============================================================
-
 (function () {
   "use strict";
   const __modules = Object.create(null);
