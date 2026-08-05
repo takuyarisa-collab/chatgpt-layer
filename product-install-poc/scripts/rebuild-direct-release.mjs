@@ -18,9 +18,12 @@ for (const name of ["payload-01.js", "payload-02.js", "payload-03.js"]) {
 let source = gunzipSync(Buffer.from(parts.join(""), "base64")).toString("utf8");
 source = source.replace("// @version      0.2.0-dev1", "// @version      0.2.0-dev3");
 
-const marker = "// ==/UserScript==";
-const banner = `${marker}\n\n// ============================================================\n// ✅ インストール完了後、ブラウザの「戻る」を1回押してください\n// ✅ After installation, tap the browser Back button once.\n// ============================================================`;
-source = source.replace(marker, banner);
+const guidance = "インストール完了後、ブラウザの「戻る」を1回押してください";
+if (!source.includes(guidance)) {
+  const marker = "// ==/UserScript==";
+  const banner = `${marker}\n\n// ============================================================\n// ✅ ${guidance}\n// ✅ After installation, tap the browser Back button once.\n// ============================================================`;
+  source = source.replace(marker, banner);
+}
 
 await mkdir(outputDir, { recursive: true });
 await writeFile(outputPath, source, "utf8");
