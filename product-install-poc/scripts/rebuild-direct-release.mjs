@@ -1,11 +1,13 @@
+import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const sourceDir = path.join(root, "product-install-poc/releases/0.2.0-dev1");
-const outputDir = path.join(root, "product-install-poc/releases/0.2.0-dev3");
-const outputPath = path.join(outputDir, "chatgpt-layer-product-0.2.0-dev3.user.js");
+const sourceDir = path.join(root, "product-install-poc/releases/0.2.1-dev1");
+const outputDir = sourceDir;
+const outputPath = path.join(outputDir, "chatgpt-layer-product-0.2.1-dev1.user.js");
+const expectedSha256 = "ffb3f80fbc017608c6cb44a5a8f404e30c5b500b3fd8c795a9822e5bbcc18d9e";
 
 const parts = [];
 for (const name of ["payload-01.js", "payload-02.js", "payload-03.js"]) {
@@ -15,16 +17,12 @@ for (const name of ["payload-01.js", "payload-02.js", "payload-03.js"]) {
   parts.push(match[1]);
 }
 
-let source = gunzipSync(Buffer.from(parts.join(""), "base64")).toString("utf8");
-source = source.replace("// @version      0.2.0-dev1", "// @version      0.2.0-dev3");
-
-const guidance = "インストール完了後、ブラウザの「戻る」を1回押してください";
-if (!source.includes(guidance)) {
-  const marker = "// ==/UserScript==";
-  const banner = `${marker}\n\n// ============================================================\n// ✅ ${guidance}\n// ✅ After installation, tap the browser Back button once.\n// ============================================================`;
-  source = source.replace(marker, banner);
+const source = gunzipSync(Buffer.from(parts.join(""), "base64"));
+const actualSha256 = createHash("sha256").update(source).digest("hex");
+if (actualSha256 !== expectedSha256) {
+  throw new Error(`Release hash mismatch: ${actualSha256}`);
 }
 
 await mkdir(outputDir, { recursive: true });
-await writeFile(outputPath, source, "utf8");
-console.log(`Generated ${path.relative(root, outputPath)}`);
+await writeFile(outputPath, source);
+console.log(`Generated ${path.relative(root, outputPath)} (${actualSha256})`);
