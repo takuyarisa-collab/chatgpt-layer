@@ -15,10 +15,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_URL: "https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-8d5c-8206-9add-77c6d9a79181/raw?se=2026-08-06T01:12:02Z&sp=r&sv=2026-02-06&sr=b&scid=0b059b2e-870b-542e-94e3-4c864335fc6e&skoid=1e4bb9ed-6bb5-424a-a3aa-79f21566e722&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-06T00:37:15Z&ske=2026-08-07T00:37:15Z&sks=b&skv=2026-02-06&sig=AXndACIsebOjH4XoIvb8KMcSSd%2BDahb4HXgV%2BMvqlog%3D"
-      EXPECTED_SHA256: "b7ff9e349f800f5dc8a423acc3bd791ea4e2ec516ee5363bb34016c60c7b130e"
-      OUTPUT_DIR: "product-install-poc/releases/0.3.0-dev1"
-      OUTPUT_FILE: "product-install-poc/releases/0.3.0-dev1/room-layer-0.3.0-dev1.user.js"
+      ARTIFACT_URL: "https://sdmntprjapaneast.oaiusercontent.com/files/00000000-6eb0-8209-9be2-080d1f9e6118/raw?se=2026-08-06T01:15:25Z&sp=r&sv=2026-02-06&sr=b&scid=d98ad8ba-7196-5f10-a0cf-658d6836d77b&skoid=1e4bb9ed-6bb5-424a-a3aa-79f21566e722&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-05T22:55:15Z&ske=2026-08-06T22:55:15Z&sks=b&skv=2026-02-06&sig=OhPKGqzxoyH/PWF/9R8Hg7JskbaZYsnsu3dWfIp2txc%3D"
+      EXPECTED_SHA256: "43470acd7871c5c3b065da784144e90776b18d5ff3da315110639f404090fbf1"
+      OUTPUT_DIR: "product-install-poc/releases/0.3.0-dev2"
+      OUTPUT_FILE: "product-install-poc/releases/0.3.0-dev2/room-layer-0.3.0-dev2.user.js"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +37,7 @@ jobs:
           echo "$EXPECTED_SHA256  $OUTPUT_FILE" | sha256sum --check --strict
           node --check "$OUTPUT_FILE"
           grep -Fq '// @name         Room Layer Dev' "$OUTPUT_FILE"
-          grep -Fq '// @version      0.3.0-dev1' "$OUTPUT_FILE"
+          grep -Fq '// @version      0.3.0-dev2' "$OUTPUT_FILE"
           if grep -Fq '@require' "$OUTPUT_FILE"; then
             echo 'Unexpected runtime dependency in standalone userscript.' >&2
             exit 1
@@ -49,5 +49,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$OUTPUT_FILE"
           git diff --cached --quiet && exit 0
-          git commit -m "Publish standalone Room Layer 0.3.0-dev1 [skip ci]"
+          git commit -m "Publish standalone Room Layer 0.3.0-dev2 [skip ci]"
           git push origin product-install-poc
