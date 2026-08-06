@@ -1,4 +1,4 @@
-name: Publish Room Layer install test
+name: Publish Room Layer development channel
 
 on:
   push:
@@ -15,39 +15,50 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_URL: "https://sdmntprjapaneast.oaiusercontent.com/files/00000000-6eb0-8209-9be2-080d1f9e6118/raw?se=2026-08-06T01:15:25Z&sp=r&sv=2026-02-06&sr=b&scid=d98ad8ba-7196-5f10-a0cf-658d6836d77b&skoid=1e4bb9ed-6bb5-424a-a3aa-79f21566e722&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-05T22:55:15Z&ske=2026-08-06T22:55:15Z&sks=b&skv=2026-02-06&sig=OhPKGqzxoyH/PWF/9R8Hg7JskbaZYsnsu3dWfIp2txc%3D"
-      EXPECTED_SHA256: "43470acd7871c5c3b065da784144e90776b18d5ff3da315110639f404090fbf1"
-      OUTPUT_DIR: "product-install-poc/releases/0.3.0-dev2"
-      OUTPUT_FILE: "product-install-poc/releases/0.3.0-dev2/room-layer-0.3.0-dev2.user.js"
+      ARTIFACT_URL: "https://sdmntprjapaneast.oaiusercontent.com/files/00000000-0a48-8209-9d7a-09503e0be871/raw?se=2026-08-06T03:50:40Z&sp=r&sv=2026-02-06&sr=b&scid=6fd2c780-e456-566a-a3c5-7a734448062c&skoid=0b778285-7b0b-4cdc-ac3b-fb93e8c3686f&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-05T21:36:52Z&ske=2026-08-06T21:36:52Z&sks=b&skv=2026-02-06&sig=b%2B%2BJGYY3%2B7CctV4Q7f8C91EpPRPRMlBeSQO5a/d7OP4%3D"
+      USER_SHA256: "023f0c56b0e0b2e9ac0a661b4a71f0d79a9e4b87c37e33a6d88563c3a3273f36"
+      META_SHA256: "aba43887ed6b695177ae9d71a4e45477f3e78b6a0dfc17938ab1a0379ab272a9"
+      VERSION: "0.3.0-dev3"
+      VERSION_DIR: "product-install-poc/releases/0.3.0-dev3"
+      CHANNEL_DIR: "product-install-poc/channels/dev"
     steps:
       - uses: actions/checkout@v4
         with:
           ref: product-install-poc
-      - name: Download verified CI artifact
+      - name: Download verified CI artifacts
         run: |
           set -euo pipefail
           curl --fail --location --retry 3 "$ARTIFACT_URL" --output /tmp/room-layer.zip
           rm -rf /tmp/room-layer-artifact
-          mkdir -p /tmp/room-layer-artifact "$OUTPUT_DIR"
+          mkdir -p /tmp/room-layer-artifact "$VERSION_DIR" "$CHANNEL_DIR"
           unzip -o /tmp/room-layer.zip -d /tmp/room-layer-artifact
-          cp /tmp/room-layer-artifact/room-layer.dev.user.js "$OUTPUT_FILE"
-      - name: Verify exact userscript
+      - name: Verify exact development artifacts
         run: |
           set -euo pipefail
-          echo "$EXPECTED_SHA256  $OUTPUT_FILE" | sha256sum --check --strict
-          node --check "$OUTPUT_FILE"
-          grep -Fq '// @name         Room Layer Dev' "$OUTPUT_FILE"
-          grep -Fq '// @version      0.3.0-dev2' "$OUTPUT_FILE"
-          if grep -Fq '@require' "$OUTPUT_FILE"; then
+          echo "$USER_SHA256  /tmp/room-layer-artifact/room-layer.dev.user.js" | sha256sum --check --strict
+          echo "$META_SHA256  /tmp/room-layer-artifact/room-layer.dev.meta.js" | sha256sum --check --strict
+          node --check /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq '// @name         Room Layer Dev' /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq "// @version      $VERSION" /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq '// @updateURL    https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/channels/dev/room-layer-dev.meta.js' /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq '// @downloadURL  https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/channels/dev/room-layer-dev.user.js' /tmp/room-layer-artifact/room-layer.dev.user.js
+          if grep -Fq '@require' /tmp/room-layer-artifact/room-layer.dev.user.js; then
             echo 'Unexpected runtime dependency in standalone userscript.' >&2
             exit 1
           fi
-      - name: Commit standalone userscript
+      - name: Publish versioned and fixed channel files
+        run: |
+          set -euo pipefail
+          cp /tmp/room-layer-artifact/room-layer.dev.user.js "$VERSION_DIR/room-layer-$VERSION.user.js"
+          cp /tmp/room-layer-artifact/room-layer.dev.meta.js "$VERSION_DIR/room-layer-$VERSION.meta.js"
+          cp /tmp/room-layer-artifact/room-layer.dev.user.js "$CHANNEL_DIR/room-layer-dev.user.js"
+          cp /tmp/room-layer-artifact/room-layer.dev.meta.js "$CHANNEL_DIR/room-layer-dev.meta.js"
+      - name: Commit development channel
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$OUTPUT_FILE"
+          git add "$VERSION_DIR" "$CHANNEL_DIR"
           git diff --cached --quiet && exit 0
-          git commit -m "Publish standalone Room Layer 0.3.0-dev2 [skip ci]"
+          git commit -m "Publish Room Layer $VERSION development channel [skip ci]"
           git push origin product-install-poc
