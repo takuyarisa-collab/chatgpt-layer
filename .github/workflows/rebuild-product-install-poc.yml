@@ -6,7 +6,7 @@ on:
       - product-install-poc
     paths:
       - product-install-poc/scripts/rebuild-direct-release.mjs
-      - product-install-poc/releases/0.2.3-dev1/payload-*.txt
+      - product-install-poc/releases/0.3.0-dev1/payload-*.txt
       - .github/workflows/rebuild-product-install-poc.yml
   workflow_dispatch:
 
@@ -23,15 +23,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Rebuild direct userscript
+      - name: Rebuild direct Room Layer userscript
         run: node product-install-poc/scripts/rebuild-direct-release.mjs
       - name: Verify syntax
-        run: node --check product-install-poc/releases/0.2.3-dev1/chatgpt-layer-product-0.2.3-dev1.user.js
+        run: node --check product-install-poc/releases/0.3.0-dev1/room-layer-0.3.0-dev1.user.js
       - name: Commit generated release
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add product-install-poc/releases/0.2.3-dev1/chatgpt-layer-product-0.2.3-dev1.user.js
+          git add product-install-poc/releases/0.3.0-dev1/room-layer-0.3.0-dev1.user.js
           git diff --cached --quiet && exit 0
-          git commit -m "Generate direct Gear-compatible 0.2.3-dev1 release [skip ci]"
+          git commit -m "Generate direct Gear-compatible Room Layer 0.3.0-dev1 release [skip ci]"
           git push origin product-install-poc
