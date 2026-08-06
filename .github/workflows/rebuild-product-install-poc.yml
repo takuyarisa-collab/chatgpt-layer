@@ -15,11 +15,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_URL: "https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-9c04-8211-b813-c3f38ede2ab4/raw?se=2026-08-06T13%3A00%3A56Z&sp=r&sv=2026-02-06&sr=b&scid=862f1f30-c176-5a7f-8c3e-ae32b1e0b4a8&skoid=6980ab1e-b994-4668-84de-ad0444c9d08b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-06T05%3A53%3A33Z&ske=2026-08-07T05%3A53%3A33Z&sks=b&skv=2026-02-06&sig=FOpDSamysX%2BvQe2NumDXmzQFVOinotE8BsdzWDDwVMw%3D"
-      USER_SHA256: "7c9161e82a7c5a4f687eec9087d463182280c4af786e2cc7e2ec86eaba6ba18a"
-      META_SHA256: "20bc3813685efc66f744b471ef65f811866e0ee71f4ea751bbbeac6fa15d6a76"
-      VERSION: "0.3.0-dev5"
-      VERSION_DIR: "product-install-poc/releases/0.3.0-dev5"
+      ARTIFACT_URL: "https://sdmntprnznorth.oaiusercontent.com/files/00000000-62f4-820b-b728-adb2db7206eb/raw?se=2026-08-06T13%3A29%3A34Z&sp=r&sv=2026-02-06&sr=b&scid=553bbc0a-f89d-5bc1-a360-8b58f8bbe48c&skoid=f5e14fda-2af7-44a3-9d18-d372ffcad871&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-06T05%3A48%3A08Z&ske=2026-08-07T05%3A48%3A08Z&sks=b&skv=2026-02-06&sig=5LsqIPN9K%2BnuyWKf3BL6xZuPi3l56b2cHkH4A2%2Bp820%3D"
+      USER_SHA256: "80b67b62ce470cec0023bf3a08179bf92d69430263e063c84059f903dd09ef7c"
+      META_SHA256: "da8f53544f42266f6a977cbad24262c9bb3bf150d31dc040a82b2e4bc84850fd"
+      VERSION: "0.3.0-dev6"
+      VERSION_DIR: "product-install-poc/releases/0.3.0-dev6"
       CHANNEL_DIR: "product-install-poc/channels/dev"
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +42,9 @@ jobs:
           grep -Fq "// @version      $VERSION" /tmp/room-layer-artifact/room-layer.dev.user.js
           grep -Fq '// @updateURL    https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/channels/dev/room-layer-dev.meta.js' /tmp/room-layer-artifact/room-layer.dev.user.js
           grep -Fq '// @downloadURL  https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/channels/dev/room-layer-dev.user.js' /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq '// @connect      raw.githubusercontent.com' /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq '// @grant        GM_xmlhttpRequest' /tmp/room-layer-artifact/room-layer.dev.user.js
+          grep -Fq '// @grant        GM.xmlHttpRequest' /tmp/room-layer-artifact/room-layer.dev.user.js
           if grep -Fq '@require' /tmp/room-layer-artifact/room-layer.dev.user.js; then
             echo 'Unexpected runtime dependency in standalone userscript.' >&2
             exit 1
