@@ -1,12 +1,10 @@
-name: Rebuild product install PoC
+name: Publish Room Layer install test
 
 on:
   push:
     branches:
       - product-install-poc
     paths:
-      - product-install-poc/scripts/rebuild-direct-release.mjs
-      - product-install-poc/releases/0.3.0-dev1/payload-*.txt
       - .github/workflows/rebuild-product-install-poc.yml
   workflow_dispatch:
 
@@ -14,24 +12,42 @@ permissions:
   contents: write
 
 jobs:
-  rebuild:
+  publish:
     runs-on: ubuntu-latest
+    env:
+      ARTIFACT_URL: "https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-8d5c-8206-9add-77c6d9a79181/raw?se=2026-08-06T01:12:02Z&sp=r&sv=2026-02-06&sr=b&scid=0b059b2e-870b-542e-94e3-4c864335fc6e&skoid=1e4bb9ed-6bb5-424a-a3aa-79f21566e722&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-06T00:37:15Z&ske=2026-08-07T00:37:15Z&sks=b&skv=2026-02-06&sig=AXndACIsebOjH4XoIvb8KMcSSd%2BDahb4HXgV%2BMvqlog%3D"
+      EXPECTED_SHA256: "b7ff9e349f800f5dc8a423acc3bd791ea4e2ec516ee5363bb34016c60c7b130e"
+      OUTPUT_DIR: "product-install-poc/releases/0.3.0-dev1"
+      OUTPUT_FILE: "product-install-poc/releases/0.3.0-dev1/room-layer-0.3.0-dev1.user.js"
     steps:
       - uses: actions/checkout@v4
         with:
           ref: product-install-poc
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Rebuild direct Room Layer userscript
-        run: node product-install-poc/scripts/rebuild-direct-release.mjs
-      - name: Verify syntax
-        run: node --check product-install-poc/releases/0.3.0-dev1/room-layer-0.3.0-dev1.user.js
-      - name: Commit generated release
+      - name: Download verified CI artifact
         run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 "$ARTIFACT_URL" --output /tmp/room-layer.zip
+          rm -rf /tmp/room-layer-artifact
+          mkdir -p /tmp/room-layer-artifact "$OUTPUT_DIR"
+          unzip -o /tmp/room-layer.zip -d /tmp/room-layer-artifact
+          cp /tmp/room-layer-artifact/room-layer.dev.user.js "$OUTPUT_FILE"
+      - name: Verify exact userscript
+        run: |
+          set -euo pipefail
+          echo "$EXPECTED_SHA256  $OUTPUT_FILE" | sha256sum --check --strict
+          node --check "$OUTPUT_FILE"
+          grep -Fq '// @name         Room Layer Dev' "$OUTPUT_FILE"
+          grep -Fq '// @version      0.3.0-dev1' "$OUTPUT_FILE"
+          if grep -Fq '@require' "$OUTPUT_FILE"; then
+            echo 'Unexpected runtime dependency in standalone userscript.' >&2
+            exit 1
+          fi
+      - name: Commit standalone userscript
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add product-install-poc/releases/0.3.0-dev1/room-layer-0.3.0-dev1.user.js
+          git add "$OUTPUT_FILE"
           git diff --cached --quiet && exit 0
-          git commit -m "Generate direct Gear-compatible Room Layer 0.3.0-dev1 release [skip ci]"
+          git commit -m "Publish standalone Room Layer 0.3.0-dev1 [skip ci]"
           git push origin product-install-poc
