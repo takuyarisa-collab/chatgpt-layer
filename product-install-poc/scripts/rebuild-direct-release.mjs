@@ -4,20 +4,17 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const sourceDir = path.join(root, "product-install-poc/releases/0.2.3-dev1");
+const sourceDir = path.join(root, "product-install-poc/releases/0.3.0-dev1");
 const outputPath = path.join(
   sourceDir,
-  "chatgpt-layer-product-0.2.3-dev1.user.js"
+  "room-layer-0.3.0-dev1.user.js"
 );
-const expectedSha256 = "ec76d9c02707676e5345f7abf0ffe115d75fb3a54f4790c1ac950ba463bad39d";
+const expectedSha256 = "b7ff9e349f800f5dc8a423acc3bd791ea4e2ec516ee5363bb34016c60c7b130e";
 
 const parts = [];
 for (const name of [
   "payload-01.txt",
-  "payload-02.txt",
-  "payload-03.txt",
-  "payload-04.txt",
-  "payload-05.txt"
+  "payload-02.txt"
 ]) {
   parts.push((await readFile(path.join(sourceDir, name), "utf8")).trim());
 }
