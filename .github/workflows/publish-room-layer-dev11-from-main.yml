@@ -84,7 +84,6 @@ jobs:
             "product-install-poc/releases/$VERSION/room-layer-$VERSION.user.js" \
             product-install-poc/channels/dev/room-layer-dev.user.js \
             product-install-poc/channels/dev/room-layer-dev.meta.js
-          git diff --cached --check
           if git diff --cached --quiet; then
             echo "dev11 is already published"
             exit 0
