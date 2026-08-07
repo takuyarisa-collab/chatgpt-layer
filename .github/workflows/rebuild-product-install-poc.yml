@@ -15,11 +15,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_URL: "https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-1ecc-8206-84ab-e2d0888ea8ab/raw?se=2026-08-07T00%3A35%3A05Z&sp=r&sv=2026-02-06&sr=b&scid=4c1f6dc8-ccd5-5a66-b94f-e78843d68b53&skoid=3e273c3d-5ea1-4088-9e18-79685531b184&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-06T05%3A20%3A23Z&ske=2026-08-07T05%3A20%3A23Z&sks=b&skv=2026-02-06&sig=XiaOY4u9lHoVdUFYicuDsPQl9K7BJm5mf28jQmGbpbI%3D"
-      USER_SHA256: "be5c8ff151d2e83f2d1fde749d9c3a905754885a8fdf5577bd4ca9dd85813467"
-      META_SHA256: "736b31d9be86d27a19cfbe8ac1450a0fadfd274aa14ad3b8107733132f940ee6"
-      VERSION: "0.3.0-dev8"
-      VERSION_DIR: "product-install-poc/releases/0.3.0-dev8"
+      ARTIFACT_URL: "https://sdmntprseasia.oaiusercontent.com/files/00000000-3f50-8207-b7b9-d56b8e350a60/raw?se=2026-08-07T01%3A00%3A59Z&sp=r&sv=2026-02-06&sr=b&scid=57130a4a-9250-539a-98ed-68f96b5f7bfc&skoid=6980ab1e-b994-4668-84de-ad0444c9d08b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-06T05%3A26%3A58Z&ske=2026-08-07T05%3A26%3A58Z&sks=b&skv=2026-02-06&sig=R1TYpZBSCdQKAmSyIuLNcNarnUkN0wykUAkvwP7G8Sg%3D"
+      USER_SHA256: "8121ee5597943f3a9ac43435102811e091d0d4fb0dce14c8d386d5d676cc5f8f"
+      META_SHA256: "d660bdf4012fe4dc2e23605c2f2a4c44b9b34ec767dfbaa19f5caa1af177d2f4"
+      VERSION: "0.3.0-dev9"
+      VERSION_DIR: "product-install-poc/releases/0.3.0-dev9"
       CHANNEL_DIR: "product-install-poc/channels/dev"
     steps:
       - uses: actions/checkout@v4
