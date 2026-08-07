@@ -3,7 +3,7 @@
 // @name:en      Room Layer Dev
 // @name:ja      Room Layer 開発版
 // @namespace    https://github.com/takuyarisa-collab/chatgpt-layer-product
-// @version      0.3.0-dev11.1
+// @version      0.3.0-dev12
 // @description  Create a personal room around ChatGPT with scoped appearance and quick actions.
 // @description:ja ChatGPTの見た目と操作環境を、チャットやプロジェクトごとの部屋として整えます。
 // @author       Shion Works
