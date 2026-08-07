@@ -2,7 +2,7 @@
   "use strict";
 
   var api = globalThis.browser || globalThis.chrome;
-  var LATEST_URL = "https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/main/extensions/gear-tab-switch/latest.json";
+  var PROTOCOL = 1;
   var STORAGE_KEY = "chatgptLayerKnownTabsV1";
   var MAX_RECORDS = 80;
   var MAX_RECORD_AGE = 45 * 24 * 60 * 60 * 1000;
@@ -168,8 +168,6 @@
 
       merged = merged.filter(function (existing) {
         if (existing.tabId === record.tabId) return false;
-
-        // Replace stale slot records only inside the same known browser window.
         return !(
           record.windowId !== null &&
           existing.windowId === record.windowId &&
@@ -191,45 +189,6 @@
     });
 
     return rememberQueue;
-  }
-
-  function compareVersions(left, right) {
-    var a = String(left || "0").split(".").map(function (part) { return Number(part) || 0; });
-    var b = String(right || "0").split(".").map(function (part) { return Number(part) || 0; });
-    var length = Math.max(a.length, b.length);
-    for (var index = 0; index < length; index += 1) {
-      var av = a[index] || 0;
-      var bv = b[index] || 0;
-      if (av > bv) return 1;
-      if (av < bv) return -1;
-    }
-    return 0;
-  }
-
-  async function fetchLatestVersion() {
-    var response = await fetch(LATEST_URL, { cache: "no-store" });
-    if (!response.ok) throw new Error("latest.json: HTTP " + response.status);
-
-    var data = await response.json();
-    var version = String(data && data.version || "");
-    var crx = String(data && data.crx || "");
-
-    if (!/^\d+(?:\.\d+){1,3}$/.test(version)) {
-      throw new Error("Invalid latest version");
-    }
-
-    if (!/^https:\/\/raw\.githubusercontent\.com\/takuyarisa-collab\/chatgpt-layer\/main\/extensions\/gear-tab-switch\/releases\/[A-Za-z0-9._-]+\.crx$/i.test(crx)) {
-      throw new Error("Invalid CRX URL");
-    }
-
-    var current = api.runtime.getManifest().version;
-    return {
-      ok: true,
-      currentVersion: current,
-      latestVersion: version,
-      updateAvailable: compareVersions(current, version) < 0,
-      crx: crx
-    };
   }
 
   function uniqueMatch(records, predicate) {
@@ -269,8 +228,6 @@
       if (sameWindowTitle) return { record: sameWindowTitle, reason: "window-title" };
     }
 
-    // Gear may restore a dormant tab without URL and title. Use its saved slot only
-    // when the match is unique and the current Gear session has one browser window.
     if (!title && context.singleWindow) {
       var slot = uniqueMatch(records, function (record) {
         return record.index === tab.index;
@@ -284,11 +241,20 @@
   async function registerSenderTab(sender) {
     var senderTab = sender && sender.tab ? sender.tab : null;
     if (!senderTab || !isChatGPTUrl(getTabUrl(senderTab))) {
-      return { ok: false, registered: false };
+      return { ok: false, code: "REGISTER_FAILED", registered: false };
     }
 
     await rememberExplicitTabs([senderTab]);
-    return { ok: true, registered: true };
+    return { ok: true, code: "OK", registered: true };
+  }
+
+  function createPingResult() {
+    return {
+      ok: true,
+      code: "OK",
+      protocol: PROTOCOL,
+      extensionVersion: api.runtime.getManifest().version
+    };
   }
 
   async function switchToNextChatGPTTab(sender) {
@@ -333,9 +299,9 @@
       return {
         ok: false,
         code: "NOT_ENOUGH_TABS",
-        message: "同じウィンドウに判別できるChatGPTタブが2枚以上必要です。初回だけ各タブを一度表示してください。",
         count: tabs.length,
-        recoveredCount: recovered.length
+        recoveredCount: recovered.length,
+        recoveredTarget: false
       };
     }
 
@@ -351,7 +317,9 @@
       return {
         ok: false,
         code: "TARGET_NOT_FOUND",
-        message: "切り替え先のChatGPTタブを特定できませんでした。"
+        count: tabs.length,
+        recoveredCount: recovered.length,
+        recoveredTarget: false
       };
     }
 
@@ -359,10 +327,7 @@
 
     return {
       ok: true,
-      targetId: target.id,
-      targetIndex: target.index,
-      targetTitle: target.title || "ChatGPT",
-      targetUrl: getTabUrl(target),
+      code: "OK",
       count: tabs.length,
       recoveredCount: recovered.length,
       recoveredTarget: recovered.some(function (item) { return item.tabId === target.id; })
@@ -375,27 +340,38 @@
     if (!message || !message.type) return false;
 
     var task;
-    if (message.type === "chatgpt-layer-switch-next-tab") {
-      task = switchToNextChatGPTTab(sender);
+    if (message.type === "room-layer-tab-navigation-ping") {
+      if (message.protocol !== PROTOCOL) {
+        task = Promise.resolve({ ok: false, code: "INCOMPATIBLE_PROTOCOL" });
+      } else {
+        task = Promise.resolve(createPingResult());
+      }
+    } else if (
+      message.type === "room-layer-tab-navigation-switch-next" ||
+      message.type === "chatgpt-layer-switch-next-tab"
+    ) {
+      if (
+        message.type === "room-layer-tab-navigation-switch-next" &&
+        message.protocol !== PROTOCOL
+      ) {
+        task = Promise.resolve({ ok: false, code: "INCOMPATIBLE_PROTOCOL" });
+      } else {
+        task = switchToNextChatGPTTab(sender);
+      }
     } else if (message.type === "chatgpt-layer-register-tab") {
       task = registerSenderTab(sender);
-    } else if (message.type === "chatgpt-layer-check-tab-switch-update") {
-      task = fetchLatestVersion();
     } else {
       return false;
     }
 
     task.then(function (result) {
       sendResponse(result);
-    }).catch(function (error) {
+    }).catch(function () {
       sendResponse({
         ok: false,
-        code: message.type === "chatgpt-layer-check-tab-switch-update"
-          ? "UPDATE_CHECK_FAILED"
-          : message.type === "chatgpt-layer-register-tab"
-            ? "REGISTER_FAILED"
-            : "SWITCH_FAILED",
-        message: String(error && error.message || error)
+        code: message.type === "chatgpt-layer-register-tab"
+          ? "REGISTER_FAILED"
+          : "TAB_SWITCH_FAILED"
       });
     });
 
