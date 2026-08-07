@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - .github/workflows/publish-room-layer-dev11-from-main.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/dev11-publish-trigger
 
 permissions:
   contents: write
@@ -75,5 +80,3 @@ jobs:
           fi
           git commit -m "Publish Room Layer dev11"
           git push origin HEAD:product-install-poc
-
-# Triggered again after workflow creation so the push event sees an existing workflow definition.
