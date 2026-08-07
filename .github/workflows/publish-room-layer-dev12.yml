@@ -1,0 +1,58 @@
+name: Publish Room Layer dev12
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/dev12-publish-trigger
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout control files
+        uses: actions/checkout@v4
+        with:
+          path: control
+
+      - name: Checkout distribution branch
+        uses: actions/checkout@v4
+        with:
+          ref: product-install-poc
+          path: dist
+
+      - name: Verify and publish dev12
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat control/.github/dev12-publish/user.patch.b64.part* | base64 --decode > /tmp/user.patch
+          base64 --decode control/.github/dev12-publish/meta.patch.b64 > /tmp/meta.patch
+
+          USER_FILE="dist/product-install-poc/channels/dev/room-layer-dev.user.js"
+          META_FILE="dist/product-install-poc/channels/dev/room-layer-dev.meta.js"
+
+          echo "7db472f2f67d71b44487a02d7fe0093e853f3659b7987873b9b7171802cede03  ${USER_FILE}" | sha256sum -c -
+          echo "f9249d2df9e8be169670b2be1cffb02f020fb191b505445b6b4343b38700144c  ${META_FILE}" | sha256sum -c -
+
+          patch -d dist -p0 < /tmp/user.patch
+          patch -d dist -p0 < /tmp/meta.patch
+
+          echo "75c49885644823a83d9a73b821285b27c37357ae98bdc389f70d62fe02cbbbb7  ${USER_FILE}" | sha256sum -c -
+          echo "aada652b752963449ef3976ce25ea3e5bf2c89e2f24b73e7da30252c04368f4f  ${META_FILE}" | sha256sum -c -
+
+          mkdir -p dist/product-install-poc/releases/0.3.0-dev12
+          cp "${USER_FILE}" dist/product-install-poc/releases/0.3.0-dev12/room-layer-0.3.0-dev12.user.js
+
+          git -C dist config user.name "github-actions[bot]"
+          git -C dist config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C dist add \
+            product-install-poc/channels/dev/room-layer-dev.user.js \
+            product-install-poc/channels/dev/room-layer-dev.meta.js \
+            product-install-poc/releases/0.3.0-dev12/room-layer-0.3.0-dev12.user.js
+          git -C dist commit -m "Publish Room Layer dev12"
+          git -C dist push origin HEAD:product-install-poc
