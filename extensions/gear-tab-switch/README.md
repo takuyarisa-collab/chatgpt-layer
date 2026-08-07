@@ -1,61 +1,94 @@
 # ChatGPT Layer Tab Switch for Gear
 
-ChatGPT LayerのGear Browser用コンパニオン拡張です。
+Room LayerのGear Browser用タブナビゲーション実装です。
 
-全画面表示中でも、ChatGPT画面の左下にある`⇄`ボタンから、同じGearウィンドウで既に開いている次のChatGPTタブへ切り替えます。
+`v0.9.0`では、従来の独立した`⇄`ボタンを表示せず、Room Layer UserScriptのQuick ActionからBridge Protocol v1経由で呼び出されます。
+
+## Product role
+
+Room LayerをGearでフルスクリーン運用したまま、既に開いている複数のChatGPTタブを移動するためのブラウザ権限層です。
+
+```text
+Room Layer Quick Action ⇄
+→ DOM Bridge Protocol v1
+→ Extension Content Script
+→ runtime.sendMessage
+→ Background Service Worker
+→ tabs.query()
+→ tabs.update(tabId, { active: true })
+```
+
+Room Layer側がUIを所有し、このExtensionはブラウザ権限が必要な処理だけを担当します。
 
 ## Requirements
 
 - Gear Browser v7.4.15以降
+- Room Layer Dev `0.3.0-dev12`以降
 - 同じウィンドウにChatGPTタブが2枚以上
 
-## Behavior
+## Bridge Protocol v1
+
+ページ側で許可するコマンドは固定の2種類だけです。
 
 ```text
-ChatGPT上の⇄ボタン
-→ Content Script
-→ runtime.sendMessage
-→ Background Service Worker
-→ tabs.update(tabId, { active: true })
+PING
+SWITCH_NEXT
 ```
 
-URL遷移、新規タブ作成、iframe Bridgeは使用しません。
+Bridgeレスポンスは次のような限定情報だけを返します。
 
-## Position
+- 成功 / 失敗
+- bounded error code
+- 認識できたChatGPTタブ数
+- dormant recovery件数
+- 切替先がdormant recovery対象だったか
+- Extension version
+- Bridge protocol version
 
-- 左端から16px
-- 下端から120px
-- ChatGPT Layerの右下ボタン群とは左右に分離
+ChatGPTタブのタイトル、URL、Chat ID、Project IDはRoom Layerへ返しません。
 
-## Install
+## UI ownership
 
-1. Gear Browserをv7.4.15以降へ更新
-2. 旧版を削除
-3. CRXをGearへインストール
-4. 開いている各ChatGPTタブを一度再読み込み・表示する
-5. 左下の`⇄`を押す
+`v0.8.0`までのExtension独自UIは`v0.9.0`で削除します。
+
+削除対象:
+
+- 左下の独立`⇄`ボタン
+- 独立Toast
+- UI維持用MutationObserver
+- 独立更新バッジ
+
+Room Layer側のQuick Actionsが表示とエラー案内を担当します。
 
 ## Dormant tab recovery
 
-v0.8.0から、表示済みChatGPTタブの`tabId`、ウィンドウ、位置、タイトル、URLを`storage.local`へ保存します。
+v0.8.0で導入した復元ロジックを継続します。
 
-Gear再起動後に休止タブの`url`と`pendingUrl`が空でも、次の順で保存情報と照合します。
+表示済みChatGPTタブの`tabId`、ウィンドウ、位置、タイトル、URLをExtensionの`storage.local`へ保存し、Gear再起動後に休止タブの`url`と`pendingUrl`が空でも保存情報と照合します。
+
+照合順の基本:
 
 1. 同じ`tabId`
 2. 同じウィンドウ・位置・タイトル
 3. 1ウィンドウ時の位置・タイトル
 4. タイトルも空の場合は、1ウィンドウかつ一意な保存位置
 
-URLが別サイトとして取得できるタブは復元候補にしません。導入直後だけ、対象のChatGPTタブを各1回表示して保存情報を作る必要があります。
+URLが別サイトとして取得できるタブは復元候補にしません。
 
-## Custom update check
+## Development packaging
 
-GearではManifest V3の標準`update_url`更新が利用できなかったため、拡張自身が`latest.json`を確認します。
+正式なExtension IDは既存v0.8と同じ`lfkioeccijijlcdpjcbddklngjnjjodd`を維持し、公式CRXは従来と同じ秘密鍵で署名する必要があります。秘密鍵はリポジトリへ保存しません。
 
-- 起動後に最新版を確認
-- 表示中は6時間ごとに再確認
-- 新版がある場合、`⇄`の右上にオレンジ色の`↑`バッジを表示
-- `↑`を押すと最新の署名済みCRXを開く
-- Gearでは上書き更新できないため、旧版を削除して新版を導入する
+開発中の実機検証では、一時的なdev署名CRXを使う場合があります。その場合はExtension IDと`storage.local`が正式版とは別になりますが、Tab Switch v0.8由来のロジック検証には影響しません。
 
-拡張機能IDは`lfkioeccijijlcdpjcbddklngjnjjodd`です。すべてのリリースは同じ秘密鍵で署名します。署名用秘密鍵はリポジトリへ保存しません。
+`latest.json`は正式に署名したCRXを公開するまでv0.8.0を指したままにします。
+
+## dev12 completion target
+
+- Room LayerがExtension接続を検出できる
+- Room Layerの`⇄` Quick Actionから次のChatGPTタブへ切り替えられる
+- Gear標準UIを開かずフルスクリーンを維持できる
+- 1タブしかない場合は安全に失敗する
+- Composer / Woodのdev10以降の性能基準を崩さない
+
+Tab切替後のChat / Project再判定とRoom再適用の本格検証はRoom Layer dev13で行います。
