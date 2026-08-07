@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          base64 --decode control/.github/dev13-publish/user.patch.b64 > /tmp/user.patch
+          base64 --decode control/.github/dev13-publish/user.patch.gz.b64 | gzip --decompress > /tmp/user.patch
           base64 --decode control/.github/dev13-publish/meta.patch.b64 > /tmp/meta.patch
 
           USER_FILE="dist/product-install-poc/channels/dev/room-layer-dev.user.js"
