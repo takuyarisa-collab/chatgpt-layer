@@ -1,0 +1,56 @@
+name: Publish dev14 native update PoC
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/dev14-update-poc-trigger
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout control files
+        uses: actions/checkout@v4
+        with:
+          path: control
+
+      - name: Checkout distribution branch
+        uses: actions/checkout@v4
+        with:
+          ref: product-install-poc
+          path: dist
+
+      - name: Publish native update PoC
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OUT="dist/product-install-poc/extensions/dev14-native-update"
+          mkdir -p "$OUT"
+
+          cat control/.github/dev14-update-poc/update.crx.b64.part* | base64 --decode > "$OUT/room-layer-dev14-update-probe.crx"
+          echo "4facf1916e9dde601f4f664f3ac917c6af36c123a2740a629ff4d80bafd88f47  $OUT/room-layer-dev14-update-probe.crx" | sha256sum -c -
+
+          cat > "$OUT/updates.xml" <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+            <app appid="hafbfhppakhokljbcnaphfhbmfonfdge">
+              <updatecheck codebase="https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/extensions/dev14-native-update/room-layer-dev14-update-probe.crx" version="0.3.1" />
+            </app>
+          </gupdate>
+          XML
+
+          git -C dist config user.name "github-actions[bot]"
+          git -C dist config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C dist add product-install-poc/extensions/dev14-native-update
+          if git -C dist diff --cached --quiet; then
+            echo "No distribution changes to publish."
+          else
+            git -C dist commit -m "Publish dev14 native update PoC"
+            git -C dist push origin HEAD:product-install-poc
+          fi
