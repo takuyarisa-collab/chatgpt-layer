@@ -1,17 +1,17 @@
 name: Publish Room Layer dev14 native update
 
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths:
-      - .github/dev14-native-update-trigger
+      - .github/dev14-native-update-publish-trigger-main
 
 permissions:
   contents: write
 
 env:
-  ARTIFACT_URL: "https://sdmntprwestus.oaiusercontent.com/files/00000000-2120-8230-83cd-4e4fa4d7a531/raw?se=2026-08-08T07%3A13%3A02Z&sp=r&sv=2026-02-06&sr=b&scid=57a9b446-786a-56f9-9a44-8120a33b538d&skoid=f5e14fda-2af7-44a3-9d18-d372ffcad871&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-08T01%3A49%3A37Z&ske=2026-08-09T01%3A49%3A37Z&sks=b&skv=2026-02-06&sig=itptSzfzso88vhgwkSbaU3mLVnuQMwiUVsAy%2B5Z0iZw%3D"
+  ARTIFACT_URL: "https://sdmntprwestus2.oaiusercontent.com/files/00000000-c204-81f8-ad29-e32ae33875b5/raw?se=2026-08-08T07%3A15%3A55Z&sp=r&sv=2026-02-06&sr=b&scid=fb5c4ac7-0e15-5e2a-bfd5-f342d6ebe05e&skoid=f5e14fda-2af7-44a3-9d18-d372ffcad871&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-08T02%3A37%3A59Z&ske=2026-08-09T02%3A37%3A59Z&sks=b&skv=2026-02-06&sig=pjC2ME7wahIo8HaBFMspNXyfxOoRVOfTFAKlsu4KCwQ%3D"
 
 jobs:
   publish:
