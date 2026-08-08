@@ -1,0 +1,117 @@
+name: Publish Room Layer dev14 native update
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/dev14-native-update-trigger
+
+permissions:
+  contents: write
+
+env:
+  ARTIFACT_URL: "https://sdmntpraustraliaeast.oaiusercontent.com/files/00000000-5138-81fa-8dd4-1a01b440a508/raw?se=2026-08-08T07%3A04%3A43Z&sp=r&sv=2026-02-06&sr=b&scid=e2f9f076-b3d7-5c4d-b454-9c53b81ca44d&skoid=f5e14fda-2af7-44a3-9d18-d372ffcad871&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-07T23%3A27%3A32Z&ske=2026-08-08T23%3A27%3A32Z&sks=b&skv=2026-02-06&sig=z2iQV6b9W6HfSdWpZN0FVC5jA9DO9MfudhvO6pNtJnw%3D"
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout control branch
+        uses: actions/checkout@v4
+        with:
+          path: control
+
+      - name: Checkout distribution branch
+        uses: actions/checkout@v4
+        with:
+          ref: product-install-poc
+          path: dist
+
+      - name: Download verified dev14 package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 "$ARTIFACT_URL" --output /tmp/room-layer-dev14.zip
+          mkdir -p /tmp/room-layer-dev14
+          unzip -q /tmp/room-layer-dev14.zip -d /tmp/room-layer-dev14
+          test -f /tmp/room-layer-dev14/webextension-dev14/manifest.json
+          test -f /tmp/room-layer-dev14/webextension-dev14-update-probe/manifest.json
+          test ! -e /tmp/room-layer-dev14/webextension-dev14/diagnostic-content.js
+          test ! -e /tmp/room-layer-dev14/webextension-dev14/diagnostic-url-class-content.js
+          grep -q '"version": "0.3.0"' /tmp/room-layer-dev14/webextension-dev14/manifest.json
+          grep -q '"version": "0.3.1"' /tmp/room-layer-dev14/webextension-dev14-update-probe/manifest.json
+          grep -q 'extensions/dev/room-layer/updates.xml' /tmp/room-layer-dev14/webextension-dev14/manifest.json
+
+      - name: Sign Base and Update Probe with one ephemeral key
+        id: sign
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then
+            echo "No Chrome/Chromium packer available" >&2
+            exit 1
+          fi
+
+          BASE=/tmp/room-layer-dev14/webextension-dev14
+          UPDATE=/tmp/room-layer-dev14/webextension-dev14-update-probe
+          "$CHROME" --no-sandbox --pack-extension="$BASE"
+          KEY="${BASE}.pem"
+          test -s "$KEY"
+          "$CHROME" --no-sandbox --pack-extension="$UPDATE" --pack-extension-key="$KEY"
+
+          openssl rsa -in "$KEY" -pubout -outform DER -out /tmp/room-layer-dev14/public.der >/dev/null 2>&1
+          APP_ID="$(python3 - <<'PY'
+import hashlib
+b = open('/tmp/room-layer-dev14/public.der', 'rb').read()
+h = hashlib.sha256(b).digest()[:16]
+a = 'abcdefghijklmnop'
+print(''.join(a[x >> 4] + a[x & 15] for x in h))
+PY
+)"
+          echo "appid=$APP_ID" >> "$GITHUB_OUTPUT"
+          sha256sum "${BASE}.crx" "${UPDATE}.crx"
+
+          # Never publish or upload the signing key.
+          rm -f "$KEY" /tmp/room-layer-dev14/public.der
+
+      - name: Publish update channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_ID='${{ steps.sign.outputs.appid }}'
+          UPDATE_CRX=/tmp/room-layer-dev14/webextension-dev14-update-probe.crx
+          CHANNEL=dist/product-install-poc/extensions/dev/room-layer
+          mkdir -p "$CHANNEL"
+          cp "$UPDATE_CRX" "$CHANNEL/room-layer-dev.crx"
+          cat > "$CHANNEL/updates.xml" <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+            <app appid="$APP_ID">
+              <updatecheck codebase="https://raw.githubusercontent.com/takuyarisa-collab/chatgpt-layer/product-install-poc/product-install-poc/extensions/dev/room-layer/room-layer-dev.crx" version="0.3.1" />
+            </app>
+          </gupdate>
+          XML
+
+          git -C dist config user.name "github-actions[bot]"
+          git -C dist config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C dist add product-install-poc/extensions/dev/room-layer/updates.xml product-install-poc/extensions/dev/room-layer/room-layer-dev.crx
+          git -C dist commit -m "Publish Room Layer dev14 native update probe"
+          git -C dist push origin HEAD:product-install-poc
+
+      - name: Prepare Base artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/base-artifact
+          cp /tmp/room-layer-dev14/webextension-dev14.crx /tmp/base-artifact/room-layer-dev14-native-update-base.crx
+          printf '%s\n' '${{ steps.sign.outputs.appid }}' > /tmp/base-artifact/extension-id.txt
+          sha256sum /tmp/base-artifact/room-layer-dev14-native-update-base.crx > /tmp/base-artifact/sha256.txt
+
+      - name: Upload Base artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-layer-dev14-native-update-base
+          path: /tmp/base-artifact/
+          if-no-files-found: error
