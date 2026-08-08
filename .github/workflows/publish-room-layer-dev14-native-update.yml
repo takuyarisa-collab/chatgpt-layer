@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 env:
-  ARTIFACT_URL: "https://sdmntpraustraliaeast.oaiusercontent.com/files/00000000-5138-81fa-8dd4-1a01b440a508/raw?se=2026-08-08T07%3A04%3A43Z&sp=r&sv=2026-02-06&sr=b&scid=e2f9f076-b3d7-5c4d-b454-9c53b81ca44d&skoid=f5e14fda-2af7-44a3-9d18-d372ffcad871&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-07T23%3A27%3A32Z&ske=2026-08-08T23%3A27%3A32Z&sks=b&skv=2026-02-06&sig=z2iQV6b9W6HfSdWpZN0FVC5jA9DO9MfudhvO6pNtJnw%3D"
+  ARTIFACT_URL: "https://sdmntprwestus.oaiusercontent.com/files/00000000-ba4c-8230-b8e5-113420042ae0/raw?se=2026-08-08T07%3A10%3A35Z&sp=r&sv=2026-02-06&sr=b&scid=34867e41-1dd0-5652-a1da-cffb29bf807d&skoid=f5e14fda-2af7-44a3-9d18-d372ffcad871&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-08T01%3A25%3A43Z&ske=2026-08-09T01%3A25%3A43Z&sks=b&skv=2026-02-06&sig=kde9doflpZinY%2BLQ7ZbSnJF0Zdubq0B4MW2CE6tPcX0%3D"
 
 jobs:
   publish:
