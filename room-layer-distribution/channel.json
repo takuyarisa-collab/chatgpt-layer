@@ -1,0 +1,20 @@
+{
+  "kind": "room-layer-gear-crx-channel-v1",
+  "version": "0.3.0",
+  "versionName": "0.3.0-dev14-diag2",
+  "extensionId": "fiphbncifdnofmjpinaohfidalhcbcnj",
+  "sha256": "1f06319491b0721be7a01d3ca4b08142fe6f3d29cd96a40a2d22ba43af7eef9b",
+  "size": 51002,
+  "encoding": "base64-chunks",
+  "parts": [
+    "base64/part-00.txt",
+    "base64/part-01.txt",
+    "base64/part-02.txt",
+    "base64/part-03.txt",
+    "base64/part-04.txt",
+    "base64/part-05.txt",
+    "base64/part-06.txt",
+    "base64/part-07.txt",
+    "base64/part-08.txt"
+  ]
+}
