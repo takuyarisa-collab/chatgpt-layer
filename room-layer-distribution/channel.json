@@ -7,14 +7,14 @@
   "size": 52892,
   "encoding": "base64-chunks",
   "parts": [
-    "base64/part-00.txt",
-    "base64/part-01.txt",
-    "base64/part-02.txt",
-    "base64/part-03.txt",
-    "base64/part-04.txt",
-    "base64/part-05.txt",
-    "base64/part-06.txt",
-    "base64/part-07.txt",
-    "base64/part-08.txt"
+    "base64/0.3.2/part-00.txt",
+    "base64/0.3.2/part-01.txt",
+    "base64/0.3.2/part-02.txt",
+    "base64/0.3.2/part-03.txt",
+    "base64/0.3.2/part-04.txt",
+    "base64/0.3.2/part-05.txt",
+    "base64/0.3.2/part-06.txt",
+    "base64/0.3.2/part-07.txt",
+    "base64/0.3.2/part-08.txt"
   ]
 }
