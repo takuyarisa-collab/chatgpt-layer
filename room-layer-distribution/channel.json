@@ -1,20 +1,15 @@
 {
   "kind": "room-layer-gear-crx-channel-v1",
-  "version": "0.3.2",
-  "versionName": "0.3.2-dev14.1-fullscreen-probe",
+  "version": "0.3.3",
+  "versionName": "0.3.3-dev14.1-fullscreen-main-probe",
   "extensionId": "fiphbncifdnofmjpinaohfidalhcbcnj",
-  "sha256": "7f5e4ccba0b390344bf00b734bb72c58a87f6875b08744891ec120b1be7919da",
-  "size": 52892,
+  "sha256": "29dba50e6303f26dfc71fbe11129cb4717ad07f4f1611860f62115b97de3604b",
+  "size": 53601,
   "encoding": "base64-chunks",
   "parts": [
-    "base64/0.3.2/part-00.txt",
-    "base64/0.3.2/part-01.txt",
-    "base64/0.3.2/part-02.txt",
-    "base64/0.3.2/part-03.txt",
-    "base64/0.3.2/part-04.txt",
-    "base64/0.3.2/part-05.txt",
-    "base64/0.3.2/part-06.txt",
-    "base64/0.3.2/part-07.txt",
-    "base64/0.3.2/part-08.txt"
+    "base64/0.3.3/part-00.txt",
+    "base64/0.3.3/part-01.txt",
+    "base64/0.3.3/part-02.txt",
+    "base64/0.3.3/part-03.txt"
   ]
 }
