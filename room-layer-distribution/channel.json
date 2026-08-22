@@ -1,16 +1,20 @@
 {
   "kind": "room-layer-gear-crx-channel-v1",
-  "version": "0.3.16",
-  "versionName": "0.3.16-dev14.9-button-polish",
+  "version": "0.3.17",
+  "versionName": "0.3.17-dev14.10-first-run-onboarding",
   "extensionId": "fiphbncifdnofmjpinaohfidalhcbcnj",
-  "payloadRef": "4c7130e0146d2399bfc9bc02943aed66e9295ec0",
-  "sha256": "b21e1f85535eee4005d2ff09b8b605253c5ba6b9469365d67a835095eed79f23",
-  "size": 59049,
+  "payloadRef": "7a22b7f88355bfc664d2cefe243fc36c46a776f2",
+  "sha256": "d3abebe481d931f7c7127f717232ccc96d83524e4c4de08a32b4a6e6e108d6dd",
+  "size": 61068,
   "encoding": "base64-chunks",
   "parts": [
-    "base64/0.3.16-v1/part-00.txt",
-    "base64/0.3.16-v1/part-01.txt",
-    "base64/0.3.16-v1/part-02.txt",
-    "base64/0.3.16-v1/part-03.txt"
+    "base64/0.3.17-v1/part-00.txt",
+    "base64/0.3.17-v1/part-01.txt",
+    "base64/0.3.17-v1/part-02a.txt",
+    "base64/0.3.17-v1/part-02b.txt",
+    "base64/0.3.17-v1/part-03a.txt",
+    "base64/0.3.17-v1/part-03b.txt",
+    "base64/0.3.17-v1/part-04.txt",
+    "base64/0.3.17-v1/part-05.txt"
   ]
 }
