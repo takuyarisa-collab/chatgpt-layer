@@ -3,7 +3,7 @@
   "version": "0.3.18",
   "versionName": "0.3.18-dev14.11-fullscreen-state-sync",
   "extensionId": "fiphbncifdnofmjpinaohfidalhcbcnj",
-  "payloadRef": "32dc404b44ac1e001d86b32d17a28e2f7f3403c0",
+  "payloadRef": "a79feff80fc4a3baba864c9b53427b9ce368f4eb",
   "sha256": "3127a907f8c9672e6e3c65510e4827cc9a9b6b4215491af3f3816a8046b58db3",
   "size": 61961,
   "encoding": "base64-chunks",
@@ -14,7 +14,8 @@
     "base64/0.3.18-v1/part-03.txt",
     "base64/0.3.18-v1/part-04.txt",
     "base64/0.3.18-v1/part-05.txt",
-    "base64/0.3.18-v1/part-06.txt",
+    "base64/0.3.18-v1/part-06a.txt",
+    "base64/0.3.18-v1/part-06b.txt",
     "base64/0.3.18-v1/part-07.txt"
   ]
 }
