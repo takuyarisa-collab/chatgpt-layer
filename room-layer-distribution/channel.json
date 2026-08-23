@@ -1,20 +1,20 @@
 {
   "kind": "room-layer-gear-crx-channel-v1",
-  "version": "0.3.17",
-  "versionName": "0.3.17-dev14.10-first-run-onboarding",
+  "version": "0.3.18",
+  "versionName": "0.3.18-dev14.11-fullscreen-state-sync",
   "extensionId": "fiphbncifdnofmjpinaohfidalhcbcnj",
-  "payloadRef": "7a22b7f88355bfc664d2cefe243fc36c46a776f2",
-  "sha256": "d3abebe481d931f7c7127f717232ccc96d83524e4c4de08a32b4a6e6e108d6dd",
-  "size": 61068,
+  "payloadRef": "32dc404b44ac1e001d86b32d17a28e2f7f3403c0",
+  "sha256": "3127a907f8c9672e6e3c65510e4827cc9a9b6b4215491af3f3816a8046b58db3",
+  "size": 61961,
   "encoding": "base64-chunks",
   "parts": [
-    "base64/0.3.17-v1/part-00.txt",
-    "base64/0.3.17-v1/part-01.txt",
-    "base64/0.3.17-v1/part-02a.txt",
-    "base64/0.3.17-v1/part-02b.txt",
-    "base64/0.3.17-v1/part-03a.txt",
-    "base64/0.3.17-v1/part-03b.txt",
-    "base64/0.3.17-v1/part-04.txt",
-    "base64/0.3.17-v1/part-05.txt"
+    "base64/0.3.18-v1/part-00.txt",
+    "base64/0.3.18-v1/part-01.txt",
+    "base64/0.3.18-v1/part-02.txt",
+    "base64/0.3.18-v1/part-03.txt",
+    "base64/0.3.18-v1/part-04.txt",
+    "base64/0.3.18-v1/part-05.txt",
+    "base64/0.3.18-v1/part-06.txt",
+    "base64/0.3.18-v1/part-07.txt"
   ]
 }
