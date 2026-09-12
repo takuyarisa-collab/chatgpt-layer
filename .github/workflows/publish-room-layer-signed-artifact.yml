@@ -1,0 +1,166 @@
+name: Publish Room Layer signed artifact
+
+on:
+  push:
+    branches:
+      - room-layer-distribution
+    paths:
+      - .github/room-layer-release-source.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: room-layer-distribution-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout distribution branch
+        uses: actions/checkout@v4
+        with:
+          ref: room-layer-distribution
+          fetch-depth: 0
+
+      - name: Read release source
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_file=.github/room-layer-release-source.json
+          version="$(jq -r '.version' "$source_file")"
+          version_name="$(jq -r '.versionName' "$source_file")"
+          artifact_url="$(jq -r '.artifactUrl' "$source_file")"
+          artifact_zip_sha256="$(jq -r '.artifactZipSha256' "$source_file")"
+          crx_sha256="$(jq -r '.crxSha256' "$source_file")"
+          crx_size="$(jq -r '.crxSize' "$source_file")"
+          extension_id="$(jq -r '.extensionId' "$source_file")"
+
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$version_name" == "$version-beta" ]]
+          [[ "$artifact_url" == https://* ]]
+          [[ "$artifact_zip_sha256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$crx_sha256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$crx_size" =~ ^[0-9]+$ ]]
+          [[ "$extension_id" =~ ^[a-p]{32}$ ]]
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "artifact_url=$artifact_url" >> "$GITHUB_OUTPUT"
+          echo "artifact_zip_sha256=$artifact_zip_sha256" >> "$GITHUB_OUTPUT"
+          echo "crx_sha256=$crx_sha256" >> "$GITHUB_OUTPUT"
+          echo "crx_size=$crx_size" >> "$GITHUB_OUTPUT"
+          echo "extension_id=$extension_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download and verify signed artifact
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.release.outputs.artifact_url }}
+          ARTIFACT_ZIP_SHA256: ${{ steps.release.outputs.artifact_zip_sha256 }}
+          CRX_SHA256: ${{ steps.release.outputs.crx_sha256 }}
+          CRX_SIZE: ${{ steps.release.outputs.crx_size }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error "$ARTIFACT_URL" --output /tmp/room-layer-release.zip
+          echo "$ARTIFACT_ZIP_SHA256  /tmp/room-layer-release.zip" | sha256sum -c -
+          rm -rf /tmp/room-layer-release
+          mkdir -p /tmp/room-layer-release
+          unzip -q /tmp/room-layer-release.zip -d /tmp/room-layer-release
+          mapfile -t crx_files < <(find /tmp/room-layer-release -type f -name '*.crx' -print)
+          if [[ "${#crx_files[@]}" -ne 1 ]]; then
+            echo "Expected exactly one CRX in signed artifact." >&2
+            exit 1
+          fi
+          cp "${crx_files[0]}" /tmp/room-layer.crx
+          echo "$CRX_SHA256  /tmp/room-layer.crx" | sha256sum -c -
+          actual_size="$(stat -c '%s' /tmp/room-layer.crx)"
+          [[ "$actual_size" == "$CRX_SIZE" ]]
+          magic="$(head -c 4 /tmp/room-layer.crx)"
+          [[ "$magic" == 'Cr24' ]]
+
+      - name: Build immutable base64 payload
+        id: payload
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          out="room-layer-distribution/base64/${VERSION}-v1"
+          if [[ -e "$out" ]]; then
+            echo "Payload path already exists: $out" >&2
+            exit 1
+          fi
+          mkdir -p "$out"
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          version = __import__('os').environ['VERSION']
+          data = Path('/tmp/room-layer.crx').read_bytes()
+          encoded = base64.b64encode(data).decode('ascii')
+          parts = [encoded[i:i+4000] for i in range(0, len(encoded), 4000)]
+          if not (1 <= len(parts) <= 32):
+              raise SystemExit(f'Unexpected part count: {len(parts)}')
+          out = Path('room-layer-distribution/base64') / f'{version}-v1'
+          for index, part in enumerate(parts):
+              (out / f'part-{index:02d}.txt').write_text(part, encoding='ascii')
+          print(len(parts))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$out"
+          git commit -m "Publish Room Layer ${VERSION} payload"
+          payload_ref="$(git rev-parse HEAD)"
+          git push origin HEAD:room-layer-distribution
+          part_count="$(find "$out" -type f -name 'part-*.txt' | wc -l | tr -d ' ')"
+          echo "payload_ref=$payload_ref" >> "$GITHUB_OUTPUT"
+          echo "part_count=$part_count" >> "$GITHUB_OUTPUT"
+
+      - name: Switch stable channel
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          VERSION_NAME: ${{ steps.release.outputs.version_name }}
+          EXTENSION_ID: ${{ steps.release.outputs.extension_id }}
+          CRX_SHA256: ${{ steps.release.outputs.crx_sha256 }}
+          CRX_SIZE: ${{ steps.release.outputs.crx_size }}
+          PAYLOAD_REF: ${{ steps.payload.outputs.payload_ref }}
+          PART_COUNT: ${{ steps.payload.outputs.part_count }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          version = os.environ['VERSION']
+          count = int(os.environ['PART_COUNT'])
+          channel = {
+              'kind': 'room-layer-gear-crx-channel-v1',
+              'version': version,
+              'versionName': os.environ['VERSION_NAME'],
+              'extensionId': os.environ['EXTENSION_ID'],
+              'payloadRef': os.environ['PAYLOAD_REF'],
+              'sha256': os.environ['CRX_SHA256'],
+              'size': int(os.environ['CRX_SIZE']),
+              'encoding': 'base64-chunks',
+              'parts': [f'base64/{version}-v1/part-{i:02d}.txt' for i in range(count)],
+          }
+          Path('room-layer-distribution/channel.json').write_text(json.dumps(channel, indent=2) + '\n', encoding='utf-8')
+          PY
+          git add room-layer-distribution/channel.json
+          git commit -m "Point Room Layer channel at ${VERSION} beta payload"
+          git push origin HEAD:room-layer-distribution
+
+      - name: Verify branch channel
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          CRX_SHA256: ${{ steps.release.outputs.crx_sha256 }}
+          PAYLOAD_REF: ${{ steps.payload.outputs.payload_ref }}
+        run: |
+          set -euo pipefail
+          git fetch origin room-layer-distribution
+          git reset --hard origin/room-layer-distribution
+          jq -e --arg v "$VERSION" --arg sha "$CRX_SHA256" --arg ref "$PAYLOAD_REF" \
+            '.version == $v and .sha256 == $sha and .payloadRef == $ref' \
+            room-layer-distribution/channel.json >/dev/null
