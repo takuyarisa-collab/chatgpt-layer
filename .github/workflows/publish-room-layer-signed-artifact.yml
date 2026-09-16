@@ -133,11 +133,12 @@ jobs:
           import json, os
           from pathlib import Path
           version = os.environ['VERSION']
+          version_name = os.environ['VERSION_NAME']
           count = int(os.environ['PART_COUNT'])
           channel = {
               'kind': 'room-layer-gear-crx-channel-v1',
               'version': version,
-              'versionName': os.environ['VERSION_NAME'],
+              'versionName': version_name,
               'extensionId': os.environ['EXTENSION_ID'],
               'payloadRef': os.environ['PAYLOAD_REF'],
               'sha256': os.environ['CRX_SHA256'],
@@ -146,8 +147,16 @@ jobs:
               'parts': [f'base64/{version}-v1/part-{i:02d}.txt' for i in range(count)],
           }
           Path('room-layer-distribution/channel.json').write_text(json.dumps(channel, indent=2) + '\n', encoding='utf-8')
+          metadata = '\n'.join([
+              '// ==UserScript==',
+              '// @name Room Layer',
+              f'// @version {version_name}',
+              '// ==/UserScript==',
+              '',
+          ])
+          Path('room-layer-distribution/update.meta.js').write_text(metadata, encoding='utf-8')
           PY
-          git add room-layer-distribution/channel.json
+          git add room-layer-distribution/channel.json room-layer-distribution/update.meta.js
           git commit -m "Point Room Layer channel at ${VERSION} beta payload"
           git push origin HEAD:room-layer-distribution
 
@@ -155,6 +164,7 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.release.outputs.version }}
+          VERSION_NAME: ${{ steps.release.outputs.version_name }}
           CRX_SHA256: ${{ steps.release.outputs.crx_sha256 }}
           PAYLOAD_REF: ${{ steps.payload.outputs.payload_ref }}
         run: |
@@ -164,3 +174,4 @@ jobs:
           jq -e --arg v "$VERSION" --arg sha "$CRX_SHA256" --arg ref "$PAYLOAD_REF" \
             '.version == $v and .sha256 == $sha and .payloadRef == $ref' \
             room-layer-distribution/channel.json >/dev/null
+          grep -Fx "// @version ${VERSION_NAME}" room-layer-distribution/update.meta.js >/dev/null
