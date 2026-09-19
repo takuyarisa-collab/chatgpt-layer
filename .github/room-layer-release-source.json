@@ -1,9 +1,9 @@
 {
-  "version": "0.3.55",
-  "versionName": "0.3.55-beta",
+  "version": "0.3.56",
+  "versionName": "0.3.56-beta",
   "extensionId": "fiphbncifdnofmjpinaohfidalhcbcnj",
-  "artifactUrl": "https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-3d80-8206-83e6-0eaf8d2601f8/raw?se=2026-09-18T23%3A25%3A05Z&sp=r&sv=2026-02-06&sr=b&scid=a30f15b3-047c-5360-aaa1-72a04826df78&skoid=1e4bb9ed-6bb5-424a-a3aa-79f21566e722&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T20%3A02%3A58Z&ske=2026-09-19T20%3A02%3A58Z&sks=b&skv=2026-02-06&sig=r3sNkfSJzlPHE0QcjE0RoLmWOtX6m60FcPE4R93oWy0%3D",
-  "artifactZipSha256": "341c95f0cfb7eea87787389d1f5b56b4ef2876cb8deffe07d597d581d940b695",
-  "crxSha256": "16495e540168f4ca4aff16c70ac772d002414b6aa8a93f20fdf46aeb8a4ba900",
-  "crxSize": 73123
+  "artifactUrl": "https://sdmntprjapaneast.oaiusercontent.com/files/00000000-8908-8209-96ea-c6ecc6bdfb56/raw?se=2026-09-19T08%3A59%3A28Z&sp=r&sv=2026-02-06&sr=b&scid=f99e15ab-c563-5ef9-a510-db21a98656a9&skoid=1e4bb9ed-6bb5-424a-a3aa-79f21566e722&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T19%3A53%3A50Z&ske=2026-09-19T19%3A53%3A50Z&sks=b&skv=2026-02-06&sig=zVRzTNOohu4SnPcU0AiMYbP42QaUNtERDEEPTz0wy4I%3D",
+  "artifactZipSha256": "6c1a02c8d960d17e1d19d614ab6caa1f123eb24c8458a21eb4f0df2d98f9a195",
+  "crxSha256": "9b75c4b8dc25944140dd9412074930fe16fb97bdd3e49c278dc3b3a2a593cb4c",
+  "crxSize": 72245
 }
