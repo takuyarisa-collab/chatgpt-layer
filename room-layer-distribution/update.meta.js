@@ -1,4 +1,4 @@
 // ==UserScript==
 // @name Room Layer
-// @version 0.3.77-beta
+// @version 0.3.78-beta
 // ==/UserScript==
